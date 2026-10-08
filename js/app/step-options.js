@@ -81,7 +81,7 @@ function stepOptions(){
         <input placeholder="${t('description')}" value="${esc(a.desc)}" data-acc="${si}-${ai}-desc">
         <input type="number" min="1" placeholder="${t('qty')}" value="${a.qty}" data-acc="${si}-${ai}-qty">
         <input type="number" step="0.01" placeholder="${t('unit_price')}" value="${a.price}" data-acc="${si}-${ai}-price">
-        <input type="number" min="0" max="100" step="0.1" placeholder="${esc(discLabel())}" value="${a.disc==null?'':a.disc}" data-acc="${si}-${ai}-disc">
+        <input type="text" inputmode="decimal" placeholder="${esc(t('extra_disc_ph'))}" title="${esc(t('extra_disc_tip'))} (${esc(discLabel())})" value="${a.disc==null?'':esc(a.disc)}" data-acc="${si}-${ai}-disc">
         <button class="xbtn" data-accdel="${si}-${ai}">✕</button>
       </div></div>`).join('');
     const opts=machineOptionals(s.code), spares=machineSpares(s.code);
@@ -107,7 +107,7 @@ function stepOptions(){
         <label class="fl">${t('machine_name')}<input class="pe" data-sol="${si}-name" value="${esc(s.name)}" placeholder="${t('new_machine')}"></label>
         <label class="fl">${t('code')}<input class="pe" data-sol="${si}-code" value="${esc(s.code)}" placeholder="${t('code')}"></label>
         <label class="fl">${t('unit_price')}<input class="pe" type="number" step="0.01" data-sol="${si}-unit" value="${s.unit}" placeholder="${t('unit_price')}"></label>
-        <label class="fl">${t('discount')} % ${t('machine_disc_sfx')}<input class="pe" type="number" min="0" max="100" step="0.1" data-sol="${si}-disc" value="${s.disc==null?'':s.disc}" placeholder="${esc(discLabel())}"></label>
+        <label class="fl">${t('discount')} % ${t('machine_disc_sfx')}<input class="pe" type="text" inputmode="decimal" data-sol="${si}-disc" value="${s.disc==null?'':esc(s.disc)}" placeholder="${esc(t('extra_disc_ph'))}" title="${esc(t('extra_disc_tip'))} (${esc(discLabel())})"></label>
         <label style="font-size:11px;display:flex;align-items:center;gap:4px;padding-bottom:8px"><input type="checkbox" data-sol="${si}-atex" ${s.atex?'checked':''}>ATEX</label>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px">
@@ -175,13 +175,13 @@ function stepOptions(){
   wireMove(v);
   v.querySelectorAll('[data-sameorder]').forEach(inp=>inp.onchange=e=>{S.solutions[+inp.dataset.sameorder].sameOrder=e.target.checked;stepOptions();});
   v.querySelectorAll('[data-acc]').forEach(inp=>inp.oninput=e=>{
-    const[si,ai,f]=inp.dataset.acc.split('-');S.solutions[si].accessories[ai][f]=(f==='qty'||f==='price')?+e.target.value:(f==='disc'?(e.target.value===''?null:Math.max(0,Math.min(100,+e.target.value||0))):e.target.value);});
+    const[si,ai,f]=inp.dataset.acc.split('-');S.solutions[si].accessories[ai][f]=(f==='qty'||f==='price')?+e.target.value:(f==='disc'?(e.target.value.trim()===''?null:e.target.value.trim()):e.target.value);});
   v.querySelectorAll('[data-sol]').forEach(inp=>inp.oninput=e=>{
     const p=inp.dataset.sol.split('-');const si=+p[0];const f=p[1];const s=S.solutions[si];
     if(f==='name')s.name=e.target.value;else if(f==='code')s.code=e.target.value;
     else if(f==='unit')s.unit=+e.target.value||0;else if(f==='atex')s.atex=e.target.checked;
     else if(f==='desc')s.desc=e.target.value;
-    else if(f==='disc')s.disc=(e.target.value===''?null:Math.max(0,Math.min(100,+e.target.value||0)));});
+    else if(f==='disc')s.disc=(e.target.value.trim()===''?null:e.target.value.trim());});
   v.querySelectorAll('[data-solspec]').forEach(inp=>inp.oninput=e=>{
     const p=inp.dataset.solspec.split('-');S.solutions[+p[0]].specs[p[1]]=e.target.value;});
   v.querySelectorAll('[data-accadd]').forEach(b=>b.onclick=()=>{S.solutions[+b.dataset.accadd].accessories.push({code:'',desc:'',qty:1,price:0,img:''});stepOptions();});

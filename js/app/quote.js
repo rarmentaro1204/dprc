@@ -1,10 +1,15 @@
 /* Generatore Offerte Depureco — modulo "quote" */
 function discMultiplier(){return (1-(S.discount||0)/100)*(1-(S.discount2||0)/100)*(1-(S.discount3||0)/100);}
 function discLabel(){const parts=[S.discount||0];if(S.discount2)parts.push(S.discount2);if(S.discount3)parts.push(S.discount3);return parts.join('+');}
-// Discount per item: the machine and each accessory can carry its own discount % (item.disc).
-// When left empty the general cascading discount (step Options, commercial terms) applies.
-function itemMult(d){return (d==null||d==='')?discMultiplier():(1-(Number(d)||0)/100);}
-function itemDiscLabel(d){return (d==null||d==='')?discLabel():String(Number(d)||0);}
+// Sconto per riga: la macchina e ogni accessorio possono avere uno sconto EXTRA (item.disc, anche a più step "5+3")
+// che si applica in cascata sopra lo sconto generale (passo Opzioni, condizioni commerciali).
+// Lo sconto di riga è EXTRA: si somma (in cascata) allo sconto generale. Accetta uno o più step: "5" oppure "5+3".
+function parseSteps(d){
+  if(d==null||d==='')return [];
+  return String(d).split(/[+;\/\s]+/).map(x=>parseFloat(String(x).replace(',','.'))).filter(x=>isFinite(x)&&x>0).map(x=>Math.min(100,x));
+}
+function itemMult(d){return discMultiplier()*parseSteps(d).reduce((m,x)=>m*(1-x/100),1);}
+function itemDiscLabel(d){const e=parseSteps(d);return e.length?discLabel()+'+'+e.join('+'):discLabel();}
 // Machines: by default each one is an ALTERNATIVE solution (customer picks one). A machine flagged
 // sameOrder (S.solutions[i].sameOrder, i>0) belongs to the SAME ORDER as the previous one: they are
 // quoted together and their totals add up. Consecutive machines linked this way form one "package".
