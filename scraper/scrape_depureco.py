@@ -5,6 +5,7 @@ Fonte: sitemap Yoast (prodotto-sitemap.xml) + JSON-LD schema.org Product/Product
 Solo libreria standard + openpyxl. Rispetta robots.txt (nessun path vietato usato) con pausa tra le richieste.
 Uso: python3 scrape_depureco.py [--out FILE.xlsx] [--limit N] [--delay 0.6] [--images DIR] [--img-size 500]
 """
+import categorie
 import argparse, html as htmllib, json, os, re, shutil, sys, time, urllib.request
 from datetime import date
 from xml.etree import ElementTree as ET
@@ -17,10 +18,10 @@ SITEMAP = BASE + "/prodotto-sitemap.xml"
 IT_PREFIX = BASE + "/aspiratori-industriali/"
 UA = "Mozilla/5.0 (compatible; DupuyCompetitiveIntel/1.0; +mailto:r.armentaro@dupuy.it)"
 
-COLONNE = ["Codice", "Famiglia", "Categoria", "Nome", "ATEX", "Prezzo", "Potenza", "Tensione",
+COLONNE = ["Codice", "Famiglia", "Categoria", "Sottocategoria", "Protezione", "Nome", "ATEX", "Prezzo", "Potenza", "Tensione",
            "Depressione", "Portata_Aria", "Rumorosita", "Tipo_Filtro", "Sup_Filtrante", "Capacita",
            "Bocca_Aspirazione", "Dimensioni", "Peso", "Altezza", "Marcatura_ATEX", "Zone_ATEX",
-           "Applicazione", "Altre_Categorie", "Altre_Specifiche", "Descrizione", "URL", "Immagine_URL", "Immagine_File"]
+           "Applicazione", "Categoria_Sito", "Altre_Specifiche", "Descrizione", "URL", "Immagine_URL", "Immagine_File"]
 
 # colonna -> nomi proprieta' (minuscoli) sul sito
 ALIAS = {
@@ -101,8 +102,7 @@ def righe_da_pagina(url, html):
         r["Codice"] = re.sub(r"[^A-Z0-9]", "", nome.upper())
         r["Famiglia"] = p["name"]
         cats = [c.strip() for c in re.split(r",\s*(?=Aspiratori|ASPIRATORI|Depolveratori|Impianti|Accessori)", pp.get("tipologie", "")) if c.strip()]
-        r["Categoria"] = cats[0] if cats else ""
-        r["Altre_Categorie"] = ", ".join(cats[1:])
+        r["Categoria_Sito"] = ", ".join(cats)   # tipologie come le scrive il sito (sovrapposte, solo di riferimento)
         img = p.get("image")
         img = img[0] if isinstance(img, list) and img else img
         r["Immagine_URL"] = (img.get("url") if isinstance(img, dict) else img) or ""
@@ -110,6 +110,7 @@ def righe_da_pagina(url, html):
         zone = pp.get("tipi zona", "")
         cert = pp.get("certificati", "")
         r["ATEX"] = "ATEX" if ("atex" in (cert + zone + allp.get("marcatura atex", "")).lower()) else ""
+        r["Categoria"], r["Sottocategoria"], r["Protezione"] = categorie.classifica(p["name"], nome, bool(r["ATEX"]), r["Categoria_Sito"])
         for col, nomi in ALIAS.items():
             for n in nomi:
                 if allp.get(n):
@@ -126,7 +127,7 @@ def righe_da_pagina(url, html):
     return righe
 
 
-def scarica_immagini(righe, cartella, size, delay):
+def scarica_immagini(righe, cartella, size, delay, forza=False):
     """Scarica l'immagine di ogni modello e la salva come <Codice>.<ext> in `cartella`.
     Le immagini condivise da piu' modelli (stessa famiglia) vengono scaricate una volta e copiate col nome di ogni modello.
     Imposta r["Immagine_File"]. Ritorna (scaricate, copiate, errori)."""
@@ -137,6 +138,12 @@ def scarica_immagini(righe, cartella, size, delay):
         if not url:
             errori.append((r["Codice"], "nessuna immagine sul sito"))
             continue
+        if not forza:   # immagine gia' presente: non riscaricare
+            gia = next((f for f in (f"{r['Codice']}.{e}" for e in ("png", "jpg", "webp", "gif"))
+                        if os.path.exists(os.path.join(cartella, f)) and os.path.getsize(os.path.join(cartella, f)) > 500), None)
+            if gia:
+                r["Immagine_File"] = gia
+                continue
         url = re.sub(r"fit=\d+%2C\d+", f"fit={size}%2C{size}", url)  # versione ridimensionata servita dal CDN del sito
         try:
             if url not in cache:
@@ -188,7 +195,7 @@ def salva(righe, out):
     ws.freeze_panes = "E5"
     ws.auto_filter.ref = f"A4:{get_column_letter(len(COLONNE))}{4 + len(righe)}"
     larg = {"Altre_Specifiche": 50, "Descrizione": 60, "URL": 55, "Immagine_URL": 55, "Immagine_File": 28, "Applicazione": 30,
-            "Categoria": 28, "Altre_Categorie": 28}
+            "Categoria": 38, "Sottocategoria": 22, "Categoria_Sito": 40}
     for i, c in enumerate(COLONNE, 1):
         ws.column_dimensions[get_column_letter(i)].width = larg.get(c, 18)
 
@@ -230,6 +237,7 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--delay", type=float, default=0.6)
     ap.add_argument("--images", default="", help="cartella dove salvare le immagini (<Codice>.png); vuoto = non scaricare")
+    ap.add_argument("--force-img", action="store_true", help="riscarica anche le immagini gia' presenti")
     ap.add_argument("--img-size", type=int, default=500, help="lato massimo in px delle immagini (default 500)")
     a = ap.parse_args()
     urls = urls_prodotti()
@@ -252,9 +260,12 @@ def main():
             errori.append((u, repr(e)))
         time.sleep(a.delay)
     if a.images:
-        ok, copie, err_img = scarica_immagini(righe, a.images, a.img_size, a.delay / 2)
+        ok, copie, err_img = scarica_immagini(righe, a.images, a.img_size, a.delay / 2, a.force_img)
         print(f"Immagini: {ok} scaricate + {copie} copie per modelli della stessa famiglia -> {a.images}/", file=sys.stderr)
         errori += [(c, "immagine: " + e) for c, e in err_img]
+    da_verificare = sorted({r["Famiglia"] for r in righe if r["Categoria"] == categorie.DAVERIFICARE})
+    if da_verificare:
+        print("\n⚠ FAMIGLIE SENZA REGOLA DI CATEGORIA (aggiungere in scraper/categorie.py): " + ", ".join(da_verificare))
     salva(righe, a.out)
     print(f"\nOK: {len(righe)} modelli -> {a.out}")
     for u, e in errori:

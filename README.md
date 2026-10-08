@@ -28,8 +28,10 @@ js/data/catalogo.js      catalogo macchine (GENERATO da tools/build_catalog_js.p
 js/data/defaults.js      dati di avvio (commerciali, optional, ricambi)
 js/app/*.js              logica: core, passi, quote/documento, router, persistenza, cartella+PDF, loader Excel
 scraper/                 scraper catalogo + confronto Dupuy/Depureco
+scraper/categorie.py     regole di categorizzazione (UNA categoria per tipo di macchina + Protezione ATEX/ACD/Standard)
 tools/build_catalog_js.py  Excel → js/data/catalogo.js
 tools/build_price_matrix.py  genera la matrice prezzi da compilare
+tools/report_categorie.py    report di revisione categorie
 tools/build_single_html.py   genera dist/index.html: file unico CON immagini incorporate (~9 MB)
 dist/index.html          l'unico file pubblicato da Netlify (vedi netlify.toml)
 images/                  immagini prodotto <Codice>.png (generate dallo scraper)
@@ -43,6 +45,9 @@ brand/                   guidelines e logo
 - **Accessori** (foglio *Accessori*) e **commerciali** (foglio *Commerciali*): oggi c'è solo il contatto generico pubblico dell'azienda.
 - **Condizioni generali di vendita**: `js/data/general-terms.js` contiene un segnaposto. Inserire il testo legale ufficiale Depureco; non è stato copiato quello Dupuy.
 - **Immagini prodotto**: già scaricate in `images/` (una per modello, nome = Codice, es. `AC6512DZ2021.png`, 500 px) e richiamate in automatico quando si sceglie la macchina. Se colleghi una cartella con `Collega cartella`, le tue immagini hanno la precedenza.
+
+## Categorie
+Le categorie del sito si sovrappongono (es. «Atex ed ACD» mescola aspiratori, depolveratori e impianti; «Accessori» contiene i pre-separatori). Qui ogni famiglia sta in **una sola categoria per tipo di macchina**, e ATEX/ACD è un filtro separato (colonna `Protezione`), con sottocategoria = serie (PUMA, FOX, TX…). Le regole sono in `scraper/categorie.py`; `data/Revisione_categorie.xlsx` (da `tools/report_categorie.py`) elenca ogni famiglia con categoria del sito vs assegnata. Un prodotto nuovo senza regola finisce in «DA VERIFICARE» e lo scraper lo segnala.
 
 ## Aggiornare il catalogo
 ```bash

@@ -13,8 +13,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 ROSSO, GRIGIO, GIALLO = "AA1917", "171717", "FFF2B3"
-COLONNE = ["Codice", "Famiglia", "Categoria", "Nome", "ATEX", "Potenza", "Portata_Aria", "Depressione", "Capacita"]
-LARG = {"Codice": 20, "Famiglia": 22, "Categoria": 38, "Nome": 28, "ATEX": 8, "Potenza": 16, "Portata_Aria": 14,
+COLONNE = ["Codice", "Famiglia", "Categoria", "Sottocategoria", "Protezione", "Nome", "ATEX", "Potenza", "Portata_Aria", "Depressione", "Capacita"]
+LARG = {"Codice": 20, "Famiglia": 22, "Categoria": 38, "Sottocategoria": 22, "Protezione": 13, "Nome": 28, "ATEX": 8, "Potenza": 16, "Portata_Aria": 14,
         "Depressione": 14, "Capacita": 11, "Prezzo": 16}
 
 def main():
@@ -26,7 +26,10 @@ def main():
     tutte = list(ws0.iter_rows(values_only=True))
     i = next(i for i, r in enumerate(tutte[:15]) if r and "Codice" in r)
     righe = [dict(zip(tutte[i], r)) for r in tutte[i + 1:] if r and r[0]]
-    righe.sort(key=lambda r: (str(r.get("Categoria") or "~"), str(r.get("Famiglia") or ""), str(r.get("Nome") or "")))
+    import sys
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent / "scraper"))
+    import categorie
+    righe.sort(key=lambda r: (categorie.ordine(r.get("Categoria") or ""), str(r.get("Sottocategoria") or ""), str(r.get("Famiglia") or ""), str(r.get("Nome") or "")))
 
     wb = Workbook()
     wi = wb.active
@@ -77,7 +80,7 @@ def main():
                         errorTitle="Prezzo non valido", error="Inserire un numero maggiore o uguale a 0 (senza simbolo €).")
     ws.add_data_validation(dv)
     dv.add(f"{get_column_letter(len(cols))}5:{get_column_letter(len(cols))}{ult}")
-    ws.freeze_panes = "E5"
+    ws.freeze_panes = "G5"
     ws.auto_filter.ref = f"A4:{get_column_letter(len(cols))}{ult}"
     ws.protection.sheet = True
     ws.protection.autoFilter = False   # filtri e ordinamento consentiti

@@ -47,7 +47,7 @@ function handleXlsx(e){
             filter_surface:norm(get('Sup_Filtrante','Filter surface','filter_surface')),capacity:norm(get('Capacita','Capacità','Capacity','capacity')),
             suction:norm(get('Bocca_Aspirazione','Suction','suction')),dimensions:norm(get('Dimensioni','Dimensions','dimensions')),
             weight:norm(get('Peso','Weight','weight')),marking:norm(get('Marcatura_ATEX','ATEX marking','marking')),
-            application:norm(get('Applicazione','Application')),url:norm(get('URL','url')),image:norm(get('Immagine_URL','image')),imageFile:norm(get('Immagine_File','imageFile'))});
+            application:norm(get('Applicazione','Application')),url:norm(get('URL','url')),image:norm(get('Immagine_URL','image')),imageFile:norm(get('Immagine_File','imageFile')),subcategory:norm(get('Sottocategoria')),protection:norm(get('Protezione'))});
         });}
       if(sA){const rows=sheetRows(wb.Sheets[sA],['codice','code','código']);
         rows.forEach(r=>{const code=norm(r.Codice||r.Code||r.code);if(!code)return;

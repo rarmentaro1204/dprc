@@ -76,7 +76,7 @@ def main():
     dep = leggi(wb["Macchine"], 4)
     for d in dep:
         d["_m"] = metriche(d["Potenza"], d["Portata_Aria"], d["Depressione"], d["Capacita"])
-        d["_atex"] = bool(d["ATEX"])
+        d["_atex"] = str(d.get("Protezione") or ("ATEX" if d["ATEX"] else "Standard")).replace(" INERT", "")
 
     cols = ["Dupuy_Codice", "Dupuy_Famiglia", "Dupuy_Nome", "ATEX", "Prezzo_L0", "Prezzo_LE",
             "D_Potenza_kW", "D_Portata_m3h", "D_Depress_mbar", "D_Capacita_lt",
@@ -98,7 +98,7 @@ def main():
         cell.fill = PatternFill("solid", fgColor="152239")
     colori = {"Equivalente": "C6EFCE", "Simile": "FFEB9C", "Approssimato": "F8CBAD", "Dati insufficienti": "D9D9D9"}
     for r in dup:
-        atex = bool(r["ATEX"])
+        atex = "ACD" if re.search(r"ACD", f'{r["Famiglia"]} {r["Nome"]}'.upper()) else ("ATEX" if r["ATEX"] else "Standard")
         m = metriche(r["Potenza"], r["Portata_Aria"], r["Depressione"], r["Capacita"], vuoto_mmh2o=True)
         cand = []
         for d in dep:
@@ -108,7 +108,7 @@ def main():
             if dist is not None and n >= 2:
                 cand.append((dist, d))
         cand.sort(key=lambda x: x[0])
-        riga = [r["Codice"], r["Famiglia"], r["Nome"], "SI" if atex else "", r["Prezzo_L0"], r["Prezzo_LE"],
+        riga = [r["Codice"], r["Famiglia"], r["Nome"], "SI" if r["ATEX"] else "", r["Prezzo_L0"], r["Prezzo_LE"],
                 m["pot"], m["port"], round(m["vuoto"]) if m["vuoto"] else None, m["cap"]]
         if cand:
             b = cand[0][1]["_m"]

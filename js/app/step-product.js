@@ -1,17 +1,27 @@
 /* Generatore Offerte Depureco — modulo "step-product" */
 /* ============== STEP 3: PRODUCT ============== */
-let curCat=null, search='', showAllAcc={};
+let curCat=null, curSub=null, curProt='', search='', showAllAcc={};
 function catCounts(){const c={};DATA.machines.forEach(m=>c[m.category]=(c[m.category]||0)+1);return c;}
+// ordine fisso delle categorie (catOrder dal catalogo); senza catOrder: per numero di modelli
+function catOrderOf(c){const o=DATA.machines.filter(m=>m.category===c).map(m=>m.catOrder).filter(x=>x!=null);return o.length?Math.min(...o):999;}
+// protezione: "ATEX INERT" conta come ATEX, "ACD INERT" come ACD
+function protOf(m){const p=String(m.protection||'').replace(/ INERT$/,'');return p||(m.atex?'ATEX':'Standard');}
+function protBadge(m){const p=String(m.protection||'');
+  if(/^ACD/.test(p))return '<span class="badge" style="background:var(--yellow);color:#171717">'+esc(p)+'</span>';
+  if(/^ATEX/.test(p)||m.atex)return '<span class="badge">'+(esc(p)||'ATEX')+'</span>';return '';}
+function subCounts(){const c={};DATA.machines.filter(m=>m.category===curCat&&(!curProt||protOf(m)===curProt)).forEach(m=>{const s=m.subcategory||m.family||'—';c[s]=(c[s]||0)+1;});return c;}
 function buildMachineListHtml(){
   let list=DATA.machines;
   if(curCat)list=list.filter(m=>m.category===curCat);
-  if(search){const q=search.toLowerCase();list=list.filter(m=>(m.name+' '+m.code).toLowerCase().includes(q));}
+  if(curCat&&curSub)list=list.filter(m=>(m.subcategory||m.family||'—')===curSub);
+  if(curProt)list=list.filter(m=>protOf(m)===curProt);
+  if(search){const q=search.toLowerCase();list=list.filter(m=>(m.name+' '+m.code+' '+(m.family||'')+' '+(m.subcategory||'')+' '+(m.category||'')).toLowerCase().includes(q));}
   list=list.slice(0,300);
   const html=list.map(m=>{
     const meta=[m.power,m.airflow,m.vacuum].filter(Boolean).join(' · ');
     return `<div class="mrow">
-      <div class="info"><div class="nm">${esc(m.name)} ${m.atex?'<span class="badge">ATEX</span>':''}</div>
-      <div class="meta">${esc(m.code)} · ${esc(meta||m.category)}</div></div>
+      <div class="info"><div class="nm">${esc(m.name)} ${protBadge(m)}</div>
+      <div class="meta">${esc(m.code)} · ${esc([m.subcategory&&m.subcategory!==m.name?m.subcategory:'',meta].filter(Boolean).join(' · ')||m.category)}</div></div>
       <div class="pr">${priceOf(m)?money(priceOf(m)):'<span style="color:var(--muted);font-size:12px;font-weight:600">'+t('price_tbd')+'</span>'}</div>
       <button class="btn prim sm" data-add="${esc(m.code)}">+ ${t('add')}</button></div>`;
   }).join('');
@@ -25,14 +35,20 @@ function refreshMachineList(){
 function stepProduct(){
   const v=$('#view');
   const counts=catCounts();
-  const cats=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const cats=Object.keys(counts).sort((a,b)=>catOrderOf(a)-catOrderOf(b)||counts[b]-counts[a]);
   const catHtml=cats.map(c=>`<button class="cat${c===curCat?' sel':''}" data-c="${esc(c)}">
      <div class="ttl">${esc(c)}</div><div class="cnt">${counts[c]} ${t('models')}</div></button>`).join('');
   const listHtml=buildMachineListHtml();
+  const protCounts={Standard:0,ATEX:0,ACD:0};DATA.machines.filter(m=>!curCat||m.category===curCat).forEach(m=>{const p=protOf(m);protCounts[p]=(protCounts[p]||0)+1;});
+  const protHtml=['','Standard','ATEX','ACD'].filter(p=>!p||protCounts[p]).map(p=>`<button class="chip${p===curProt?' sel':''}" data-prot="${p}" style="border:1px solid var(--line);cursor:pointer;${p===curProt?'background:var(--red);color:#fff':''}">${p?esc(p):t('all_f')}${p?' · '+protCounts[p]:''}</button>`).join('');
+  const sc=curCat?subCounts():{};
+  const subHtml=curCat&&Object.keys(sc).length>1?`<div style="margin-top:10px">${['',...Object.keys(sc)].map(s=>`<button class="chip${(s||null)===curSub?' sel':''}" data-sub="${esc(s)}" style="border:1px solid var(--line);cursor:pointer;${(s||null)===curSub?'background:var(--navy);color:#fff':''}">${s?esc(s)+' · '+sc[s]:t('all_f')}</button>`).join('')}</div>`:'';
   v.innerHTML=`
   <div class="card">
     <h2>${t('step_product')}</h2><p class="hint">${t('hint_product')}</p>
     <div class="cat-grid">${catHtml}</div>
+    <div style="margin-top:12px"><span class="hint" style="margin-right:6px">${t('protection_f')}:</span>${protHtml}</div>
+    ${subHtml}
     <input class="search" id="i_search" placeholder="${esc(t('ph_search'))}" value="${esc(search)}">
     <div class="mlist">${listHtml}</div>
     <button class="btn ghost" id="btnCustom" style="margin-top:10px">➕ ${t('add_custom')}</button>
@@ -43,7 +59,9 @@ function stepProduct(){
     ${S.solutions.length?renderSolList():'<p class="hint">'+t('none_selected')+'</p>'}
   </div>
   ${selectedDrawer()}`;
-  v.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{curCat=(curCat===b.dataset.c?null:b.dataset.c);stepProduct();});
+  v.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{curCat=(curCat===b.dataset.c?null:b.dataset.c);curSub=null;stepProduct();});
+  v.querySelectorAll('[data-prot]').forEach(b=>b.onclick=()=>{curProt=b.dataset.prot;curSub=null;stepProduct();});
+  v.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{curSub=b.dataset.sub||null;stepProduct();});
   $('#i_search').oninput=e=>{search=e.target.value;refreshMachineList();};
   v.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addSolution(b.dataset.add));
   if($('#btnCustom'))$('#btnCustom').onclick=addCustomSolution;

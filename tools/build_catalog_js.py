@@ -4,6 +4,8 @@ Uso: python3 tools/build_catalog_js.py data/depureco_catalogo_AAAA-MM-GG.xlsx
 Stessa mappatura colonne->campi di js/app/xlsx-loader.js (handleXlsx)."""
 import json, re, sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scraper"))
+import categorie
 from openpyxl import load_workbook
 
 CAMPI = {  # campo app -> colonna Excel
@@ -11,7 +13,7 @@ CAMPI = {  # campo app -> colonna Excel
     "power": "Potenza", "voltage": "Tensione", "vacuum": "Depressione", "airflow": "Portata_Aria",
     "noise": "Rumorosita", "filter_type": "Tipo_Filtro", "filter_surface": "Sup_Filtrante",
     "capacity": "Capacita", "suction": "Bocca_Aspirazione", "dimensions": "Dimensioni", "weight": "Peso",
-    "marking": "Marcatura_ATEX", "application": "Applicazione", "url": "URL", "image": "Immagine_URL", "imageFile": "Immagine_File",
+    "marking": "Marcatura_ATEX", "application": "Applicazione", "url": "URL", "image": "Immagine_URL", "imageFile": "Immagine_File", "subcategory": "Sottocategoria", "protection": "Protezione",
 }
 
 def num(v):
@@ -38,6 +40,7 @@ def main(xlsx):
         m["name"] = m["name"] or m["code"]
         m["atex"] = bool(re.match(r"^(si|sì|yes|x|true|1|atex)$", str(r.get("ATEX") or ""), re.I))
         m["price"] = num(r.get("Prezzo"))
+        m["catOrder"] = categorie.ordine(m["category"])
         out.append(m)
     dest = Path(__file__).resolve().parent.parent / "js" / "data" / "catalogo.js"
     dest.write_text("/* GENERATO da tools/build_catalog_js.py — non modificare a mano. Fonte: %s */\nconst CATALOGO_DEPURECO = %s;\n"
