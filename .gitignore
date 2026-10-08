@@ -5,3 +5,4 @@ __pycache__/
 
 # confronto con listino Dupuy: contiene prezzi interni L0/LE, non pubblicare su repo pubblica
 data/*_vs_dupuy.xlsx
+dist-lean/

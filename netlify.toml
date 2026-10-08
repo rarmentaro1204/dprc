@@ -1,0 +1,11 @@
+# Netlify pubblica SOLO dist/index.html: file unico con foto incorporate (nessuna build lato Netlify).
+# Dopo ogni modifica ai sorgenti: python3 tools/build_single_html.py  e poi commit + push di dist/.
+[build]
+  publish = "dist"
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"   # strumento interno: non indicizzare
+    Cache-Control = "public, max-age=0, must-revalidate"

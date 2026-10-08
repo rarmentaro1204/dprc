@@ -6,6 +6,9 @@ Tre cose in una repo:
 2. **Scraper del catalogo** (`scraper/scrape_depureco.py`): estrae i modelli da www.depureco.com in Excel, con la stessa struttura del listino Dupuy.
 3. **Confronto Dupuy vs Depureco** (`scraper/confronta_dupuy_depureco.py`, richiede il listino Dupuy in locale; l'output non è versionato): per ogni modello Dupuy trova il Depureco più vicino per potenza, portata, depressione, capacità.
 
+## Pubblicazione (GitHub → Netlify)
+Netlify pubblica solo la cartella `dist/` (`netlify.toml`), cioè il file unico con le foto. Dopo ogni modifica: `python3 tools/build_single_html.py`, poi commit e push (incluso `dist/index.html`). Nessun comando di build su Netlify. Le pagine hanno `noindex`: strumento interno, con prezzi e listino.
+
 ## Avvio rapido
 ```bash
 python3 -m http.server 8765      # dalla radice della repo
@@ -27,7 +30,8 @@ js/app/*.js              logica: core, passi, quote/documento, router, persisten
 scraper/                 scraper catalogo + confronto Dupuy/Depureco
 tools/build_catalog_js.py  Excel → js/data/catalogo.js
 tools/build_price_matrix.py  genera la matrice prezzi da compilare
-tools/build_single_html.py   file unico in dist/ (leggero) ; con --embed-images incorpora anche le immagini (~9 MB, nessuna cartella da portarsi dietro)
+tools/build_single_html.py   genera dist/index.html: file unico CON immagini incorporate (~9 MB)
+dist/index.html          l'unico file pubblicato da Netlify (vedi netlify.toml)
 images/                  immagini prodotto <Codice>.png (generate dallo scraper)
 data/                    catalogo Excel (il confronto *_vs_dupuy.xlsx resta solo locale: contiene prezzi interni Dupuy)
 brand/                   guidelines e logo
