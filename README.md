@@ -27,7 +27,8 @@ js/app/*.js              logica: core, passi, quote/documento, router, persisten
 scraper/                 scraper catalogo + confronto Dupuy/Depureco
 tools/build_catalog_js.py  Excel → js/data/catalogo.js
 tools/build_price_matrix.py  genera la matrice prezzi da compilare
-tools/build_single_html.py   impacchetta tutto in dist/Generatore_Offerte_DEPURECO_2026.html (file unico)
+tools/build_single_html.py   file unico in dist/ (leggero) ; con --embed-images incorpora anche le immagini (~9 MB, nessuna cartella da portarsi dietro)
+images/                  immagini prodotto <Codice>.png (generate dallo scraper)
 data/                    catalogo Excel (il confronto *_vs_dupuy.xlsx resta solo locale: contiene prezzi interni Dupuy)
 brand/                   guidelines e logo
 .claude/agents/depureco-scraper.md   agent Claude Code per rilanciare lo scraping
@@ -37,11 +38,11 @@ brand/                   guidelines e logo
 - **Prezzi** (listino unico, niente L0/LE): Depureco non li pubblica. Compilare **solo la colonna Prezzo** di `data/Matrice_Prezzi_Depureco.xlsx` (tutte le altre celle sono bloccate) e caricarla nel generatore con **Carica listino**: i prezzi si abbinano per Codice al catalogo incorporato. Per renderli permanenti: `python3 tools/build_catalog_js.py <file con colonna Prezzo>`. Finché vuoti: "Prezzo da definire".
 - **Accessori** (foglio *Accessori*) e **commerciali** (foglio *Commerciali*): oggi c'è solo il contatto generico pubblico dell'azienda.
 - **Condizioni generali di vendita**: `js/data/general-terms.js` contiene un segnaposto. Inserire il testo legale ufficiale Depureco; non è stato copiato quello Dupuy.
-- **Immagini prodotto**: collegare una cartella con file nominati per codice (`Collega cartella`); il catalogo contiene anche `Immagine_URL` come riferimento.
+- **Immagini prodotto**: già scaricate in `images/` (una per modello, nome = Codice, es. `AC6512DZ2021.png`, 500 px) e richiamate in automatico quando si sceglie la macchina. Se colleghi una cartella con `Collega cartella`, le tue immagini hanno la precedenza.
 
 ## Aggiornare il catalogo
 ```bash
-python3 scraper/scrape_depureco.py --out data/depureco_catalogo_$(date +%F).xlsx
+python3 scraper/scrape_depureco.py --images images --out data/depureco_catalogo_$(date +%F).xlsx
 python3 tools/build_catalog_js.py data/depureco_catalogo_$(date +%F).xlsx
 ```
 Dipendenza: `openpyxl`. Lo scraper usa solo la sitemap pubblica e i dati strutturati delle schede (pausa tra richieste).

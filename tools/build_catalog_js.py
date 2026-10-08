@@ -11,7 +11,7 @@ CAMPI = {  # campo app -> colonna Excel
     "power": "Potenza", "voltage": "Tensione", "vacuum": "Depressione", "airflow": "Portata_Aria",
     "noise": "Rumorosita", "filter_type": "Tipo_Filtro", "filter_surface": "Sup_Filtrante",
     "capacity": "Capacita", "suction": "Bocca_Aspirazione", "dimensions": "Dimensioni", "weight": "Peso",
-    "marking": "Marcatura_ATEX", "application": "Applicazione", "url": "URL", "image": "Immagine_URL",
+    "marking": "Marcatura_ATEX", "application": "Applicazione", "url": "URL", "image": "Immagine_URL", "imageFile": "Immagine_File",
 }
 
 def num(v):

@@ -3,9 +3,9 @@
 
 Fonte: sitemap Yoast (prodotto-sitemap.xml) + JSON-LD schema.org Product/ProductModel di ogni scheda.
 Solo libreria standard + openpyxl. Rispetta robots.txt (nessun path vietato usato) con pausa tra le richieste.
-Uso: python3 scrape_depureco.py [--out FILE.xlsx] [--limit N] [--delay 0.6]
+Uso: python3 scrape_depureco.py [--out FILE.xlsx] [--limit N] [--delay 0.6] [--images DIR] [--img-size 500]
 """
-import argparse, html as htmllib, json, re, sys, time, urllib.request
+import argparse, html as htmllib, json, os, re, shutil, sys, time, urllib.request
 from datetime import date
 from xml.etree import ElementTree as ET
 from openpyxl import Workbook
@@ -20,7 +20,7 @@ UA = "Mozilla/5.0 (compatible; DupuyCompetitiveIntel/1.0; +mailto:r.armentaro@du
 COLONNE = ["Codice", "Famiglia", "Categoria", "Nome", "ATEX", "Prezzo", "Potenza", "Tensione",
            "Depressione", "Portata_Aria", "Rumorosita", "Tipo_Filtro", "Sup_Filtrante", "Capacita",
            "Bocca_Aspirazione", "Dimensioni", "Peso", "Altezza", "Marcatura_ATEX", "Zone_ATEX",
-           "Applicazione", "Altre_Categorie", "Altre_Specifiche", "Descrizione", "URL", "Immagine_URL"]
+           "Applicazione", "Altre_Categorie", "Altre_Specifiche", "Descrizione", "URL", "Immagine_URL", "Immagine_File"]
 
 # colonna -> nomi proprieta' (minuscoli) sul sito
 ALIAS = {
@@ -126,6 +126,45 @@ def righe_da_pagina(url, html):
     return righe
 
 
+def scarica_immagini(righe, cartella, size, delay):
+    """Scarica l'immagine di ogni modello e la salva come <Codice>.<ext> in `cartella`.
+    Le immagini condivise da piu' modelli (stessa famiglia) vengono scaricate una volta e copiate col nome di ogni modello.
+    Imposta r["Immagine_File"]. Ritorna (scaricate, copiate, errori)."""
+    os.makedirs(cartella, exist_ok=True)
+    cache, ok, copie, errori = {}, 0, 0, []
+    for r in righe:
+        url = r.get("Immagine_URL")
+        if not url:
+            errori.append((r["Codice"], "nessuna immagine sul sito"))
+            continue
+        url = re.sub(r"fit=\d+%2C\d+", f"fit={size}%2C{size}", url)  # versione ridimensionata servita dal CDN del sito
+        try:
+            if url not in cache:
+                req = urllib.request.Request(url, headers={"User-Agent": UA})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    tipo = resp.headers.get("Content-Type", "")
+                    dati = resp.read()
+                if not tipo.startswith("image/") or len(dati) < 500:
+                    raise ValueError(f"risposta non valida ({tipo}, {len(dati)} byte)")
+                ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif"}.get(tipo.split(";")[0], "png")
+                nome = f"{r['Codice']}.{ext}"
+                with open(os.path.join(cartella, nome), "wb") as f:
+                    f.write(dati)
+                cache[url] = (nome, dati, ext)
+                ok += 1
+                time.sleep(delay)
+            else:
+                _, dati, ext = cache[url]
+                nome = f"{r['Codice']}.{ext}"
+                with open(os.path.join(cartella, nome), "wb") as f:
+                    f.write(dati)
+                copie += 1
+            r["Immagine_File"] = nome
+        except Exception as e:
+            errori.append((r["Codice"], repr(e)))
+    return ok, copie, errori
+
+
 def salva(righe, out):
     """Cartella di lavoro compatibile col Generatore Offerte: fogli Macchine, Accessori, Commerciali, Istruzioni."""
     ROSSO, GRIGIO = "AA1917", "171717"  # brand Depureco
@@ -148,7 +187,7 @@ def salva(righe, out):
         ws.append([r[c] for c in COLONNE])
     ws.freeze_panes = "E5"
     ws.auto_filter.ref = f"A4:{get_column_letter(len(COLONNE))}{4 + len(righe)}"
-    larg = {"Altre_Specifiche": 50, "Descrizione": 60, "URL": 55, "Immagine_URL": 55, "Applicazione": 30,
+    larg = {"Altre_Specifiche": 50, "Descrizione": 60, "URL": 55, "Immagine_URL": 55, "Immagine_File": 28, "Applicazione": 30,
             "Categoria": 28, "Altre_Categorie": 28}
     for i, c in enumerate(COLONNE, 1):
         ws.column_dimensions[get_column_letter(i)].width = larg.get(c, 18)
@@ -190,6 +229,8 @@ def main():
     ap.add_argument("--out", default=f"depureco_catalogo_{date.today().isoformat()}.xlsx")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--delay", type=float, default=0.6)
+    ap.add_argument("--images", default="", help="cartella dove salvare le immagini (<Codice>.png); vuoto = non scaricare")
+    ap.add_argument("--img-size", type=int, default=500, help="lato massimo in px delle immagini (default 500)")
     a = ap.parse_args()
     urls = urls_prodotti()
     if a.limit:
@@ -210,6 +251,10 @@ def main():
         except Exception as e:
             errori.append((u, repr(e)))
         time.sleep(a.delay)
+    if a.images:
+        ok, copie, err_img = scarica_immagini(righe, a.images, a.img_size, a.delay / 2)
+        print(f"Immagini: {ok} scaricate + {copie} copie per modelli della stessa famiglia -> {a.images}/", file=sys.stderr)
+        errori += [(c, "immagine: " + e) for c, e in err_img]
     salva(righe, a.out)
     print(f"\nOK: {len(righe)} modelli -> {a.out}")
     for u, e in errori:

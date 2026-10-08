@@ -28,11 +28,20 @@ let IMGCACHE={};      // normalizedCode -> object URL (lazy, fast)
 let CLIENTS=(EMBEDDED_CLIENTS||[]).slice();   // auto-loaded from embedded list (zero-click)
 let REGISTRY={rows:[], fileHandle:null, fileName:''};
 let CLIENTS_FILE={handle:null, name:''};   // writable handle to the source contacts file (when folder linked)
+// Immagine predefinita del modello, scaricata dallo scraper come images/<Codice>.png (colonna Immagine_File).
+// Nel file HTML "con immagini" le stesse immagini sono incorporate (IMAGES_EMBED).
+function catalogImageUrl(k){
+  const m=(DATA&&DATA.machines||[]).find(x=>imgKey(x.code)===k);
+  if(!m||!m.imageFile)return '';
+  if(typeof IMAGES_EMBED!=='undefined'&&IMAGES_ALIAS[m.imageFile]&&IMAGES_EMBED[IMAGES_ALIAS[m.imageFile]])return IMAGES_EMBED[IMAGES_ALIAS[m.imageFile]];
+  return IMAGES_BASE+encodeURIComponent(m.imageFile);
+}
 function imgKey(code){return String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
 function imgUrlForCode(code){
   const k=imgKey(code);
   if(IMGCACHE[k])return IMGCACHE[k];
-  const f=IMGMAP[k];if(!f)return '';
+  const f=IMGMAP[k];
+  if(!f)return catalogImageUrl(k);   // nessuna cartella collegata: immagine del catalogo (cartella images/ o incorporata)
   const url=URL.createObjectURL(f);   // instant, no base64 decode
   IMGCACHE[k]=url;return url;
 }
