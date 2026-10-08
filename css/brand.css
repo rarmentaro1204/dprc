@@ -1,0 +1,31 @@
+/* ==========================================================================
+   DEPURECO — design tokens (brand estratto da www.depureco.com, tema Canva-Depureco-V3)
+   Rosso #AA1917 · Giallo #FFD017 · Grigio scuro #171717 · Font: Lato (testo) + Bebas Neue (titoli)
+   ========================================================================== */
+:root{
+  /* brand */
+  --red:#AA1917; --red-700:#660F0E; --red-300:#BB4745; --red-100:#EED1D1;
+  --yellow:#FFD017; --yellow-700:#B29210; --yellow-100:#FFF6D1;
+  --navy:#171717; --navy2:#292929;            /* nome storico delle variabili: ora grigio scuro Depureco */
+  /* neutri */
+  --ink:#171717; --line:#dcdcdc; --soft:#f2f2f2; --muted:#6f6f6f; --white:#fff;
+  --steel:#4a4a4a; --steelL:#6e6e6e; --greybar:#ececec; --valtint:#bdbdbd;
+  /* tipografia */
+  --font-body:'Lato','Helvetica Neue',Arial,sans-serif;
+  --font-title:'Bebas Neue','Lato',Impact,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font-body);color:var(--ink);background:#f5f5f5}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+.app-hide{display:none!important}
+
+/* titoli in Bebas Neue (come il sito) */
+.topbar h1,.card h2,.hbar .r,.hbar .l,.cover .ctitle,.gc-title,.load-title,.sol .head .nm,.cat .ttl{
+  font-family:var(--font-title);font-weight:400;letter-spacing:.05em}
+.topbar h1{font-size:20px}.card h2{font-size:26px}.hbar .r{font-size:19px}.hbar .l{font-size:16px}
+.cover .ctitle{font-size:26px;font-weight:400}.cover .ctitle .nm{font-size:30px}
+.gc-title{font-size:18px}.sol .head .nm{font-size:21px}.cat .ttl{font-size:17px}
+/* accenti giallo Depureco */
+.step.active{border-color:var(--yellow)}
+.btn.prim{box-shadow:0 2px 0 var(--red-700)}
