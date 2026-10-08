@@ -27,6 +27,7 @@ js/app/*.js              logica: core, passi, quote/documento, router, persisten
 scraper/                 scraper catalogo + confronto Dupuy/Depureco
 tools/build_catalog_js.py  Excel → js/data/catalogo.js
 tools/build_price_matrix.py  genera la matrice prezzi da compilare
+tools/build_single_html.py   impacchetta tutto in dist/Generatore_Offerte_DEPURECO_2026.html (file unico)
 data/                    catalogo Excel (il confronto *_vs_dupuy.xlsx resta solo locale: contiene prezzi interni Dupuy)
 brand/                   guidelines e logo
 .claude/agents/depureco-scraper.md   agent Claude Code per rilanciare lo scraping
