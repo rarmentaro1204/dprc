@@ -17,7 +17,7 @@ SITEMAP = BASE + "/prodotto-sitemap.xml"
 IT_PREFIX = BASE + "/aspiratori-industriali/"
 UA = "Mozilla/5.0 (compatible; DupuyCompetitiveIntel/1.0; +mailto:r.armentaro@dupuy.it)"
 
-COLONNE = ["Codice", "Famiglia", "Categoria", "Nome", "ATEX", "Prezzo_L0", "Prezzo_LE", "Potenza", "Tensione",
+COLONNE = ["Codice", "Famiglia", "Categoria", "Nome", "ATEX", "Prezzo", "Potenza", "Tensione",
            "Depressione", "Portata_Aria", "Rumorosita", "Tipo_Filtro", "Sup_Filtrante", "Capacita",
            "Bocca_Aspirazione", "Dimensioni", "Peso", "Altezza", "Marcatura_ATEX", "Zone_ATEX",
            "Applicazione", "Altre_Categorie", "Altre_Specifiche", "Descrizione", "URL", "Immagine_URL"]
@@ -135,7 +135,7 @@ def salva(righe, out):
     ws["A1"] = "DEPURECO — CATALOGO MACCHINE (scraping www.depureco.com)"
     ws["A1"].font = Font(bold=True, size=14, color=ROSSO)
     ws["A2"] = (f"Estratto il {date.today().isoformat()} · {len(righe)} modelli · prezzi non pubblicati dal sito: "
-                "compilare Prezzo_L0 / Prezzo_LE dal listino interno · stessa struttura del listino Dupuy")
+                "compilare la colonna Prezzo (listino unico) · struttura del listino Dupuy senza L0/LE")
     ws["A2"].font = Font(italic=True, color="666666")
     def intestazione(sheet, cols, riga):
         for i, c in enumerate(cols, 1):
@@ -157,8 +157,8 @@ def salva(righe, out):
     wa["A1"] = "DEPURECO — LISTINO ACCESSORI"
     wa["A1"].font = Font(bold=True, size=14, color=ROSSO)
     wa["A2"] = "Accessori, kit e ricambi · da compilare dal listino interno (il sito non pubblica codici/prezzi)"
-    intestazione(wa, ["Codice", "Descrizione", "Prezzo_L0", "Prezzo_LE"], 4)
-    for col, w in zip("ABCD", (18, 70, 14, 14)):
+    intestazione(wa, ["Codice", "Descrizione", "Prezzo"], 4)
+    for col, w in zip("ABC", (18, 70, 14)):
         wa.column_dimensions[col].width = w
 
     wc = wb.create_sheet("Commerciali")
@@ -174,8 +174,8 @@ def salva(righe, out):
         "DEPURECO — FILE SORGENTE CATALOGO PER IL GENERATORE OFFERTE",
         "",
         "Generato da scraper/scrape_depureco.py (fonte: www.depureco.com, schede prodotto pubbliche).",
-        "1. Compilare Prezzo_L0 (rivenditore) e Prezzo_LE (cliente finale/export) nel foglio Macchine.",
-        "2. Compilare il foglio Accessori (Codice, Descrizione, Prezzo_L0, Prezzo_LE) e aggiornare Commerciali.",
+        "1. Compilare la colonna Prezzo (listino unico) nel foglio Macchine.",
+        "2. Compilare il foglio Accessori (Codice, Descrizione, Prezzo) e aggiornare Commerciali.",
         "3. Nel Generatore Offerte: pulsante 'Carica listino' e scegliere questo file.",
         "Le colonne Immagine_URL, URL, Altre_Categorie e Altre_Specifiche sono informative.",
     ], 1):

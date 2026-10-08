@@ -187,7 +187,7 @@ function stepOptions(){
   v.querySelectorAll('[data-accadd]').forEach(b=>b.onclick=()=>{S.solutions[+b.dataset.accadd].accessories.push({code:'',desc:'',qty:1,price:0,img:''});stepOptions();});
   v.querySelectorAll('[data-accdel]').forEach(b=>b.onclick=()=>{const[si,ai]=b.dataset.accdel.split('-');S.solutions[si].accessories.splice(ai,1);stepOptions();});
   function addAcc(si,acc){
-    const price=LIST==='LE'?(acc.LE??acc.L0):(acc.L0??acc.LE);
+    const price=acc.price;
     const item={code:acc.code,desc:acc.desc||'',qty:1,price:price||0,img:''};
     S.solutions[si].accessories.push(item);
     const _u=imgUrlForCode(acc.code);if(_u)item.img=_u;
@@ -210,7 +210,7 @@ function stepOptions(){
       list=list.slice(0,60);
       if(!list.length){sg.style.display='none';return;}
       sg.innerHTML=list.map(a=>`<div data-code="${esc(a.code)}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f2f5;font-size:12.5px;display:flex;justify-content:space-between;gap:10px">
-        <span><b>${esc(a.code)}</b> · ${esc(a.desc)}</span><span style="color:#2b2b2b;white-space:nowrap">${money(LIST==='LE'?(a.LE??a.L0):(a.L0??a.LE))}</span></div>`).join('');
+        <span><b>${esc(a.code)}</b> · ${esc(a.desc)}</span><span style="color:#2b2b2b;white-space:nowrap">${money(a.price)}</span></div>`).join('');
       sg.style.display='block';
       sg.querySelectorAll('[data-code]').forEach(d=>d.onmousedown=ev=>{ev.preventDefault();
         const acc=DATA.accessories.find(a=>a.code===d.dataset.code);if(acc)addAcc(si,acc);});

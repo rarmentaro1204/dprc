@@ -1,5 +1,5 @@
 /* Generatore Offerte Depureco — modulo "core" */
-let LANG='it', LIST='L0';
+let LANG='it';   // listino prezzi unico (Depureco non ha L0/LE)
 function t(k){return (I18N[LANG]&&I18N[LANG][k])||(I18N.en[k])||k;}
 
 /* ============== STATE ============== */
@@ -42,7 +42,7 @@ function addSolImages(si, urls){ const s=S.solutions[si]; ensureImgs(s); urls.fo
 // optionals & spare parts read from the price lists, specific to each model
 function machineOptionals(code){return MACHINE_OPTIONALS[code]||[];}
 function machineSpares(code){return MACHINE_SPARES[code]||[];}
-function liteP(o){return LIST==='LE'?(o.le??o.l0):(o.l0??o.le);}
+function liteP(o){return o.price??o.l0??o.le;}
 function addItem(si,o){
   if(S.solutions[si].accessories.find(x=>x.code===o.code))return;
   const item={code:o.code,desc:o.desc||'',qty:1,price:liteP(o)||0,img:''};
@@ -67,7 +67,7 @@ function applyNextOfferNumber(){
 const $=s=>document.querySelector(s);
 const ce=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
 function money(n){n=Number(n)||0;const neg=n<0;n=Math.abs(n);const p=n.toFixed(2).split('.');const int=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (neg?'-':'')+int+','+p[1]+' €';}
-function priceOf(m){return LIST==='LE'?(m.LE??m.L0):(m.L0??m.LE);}
+function priceOf(m){return Number(m.price)||0;}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 const SPEC_FIELDS=[['power','power'],['voltage','voltage'],['vacuum','vacuum'],['airflow','airflow'],

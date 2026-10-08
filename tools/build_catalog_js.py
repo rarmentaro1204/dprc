@@ -37,7 +37,7 @@ def main(xlsx):
         m["category"] = m["category"] or "ALTRO"
         m["name"] = m["name"] or m["code"]
         m["atex"] = bool(re.match(r"^(si|sì|yes|x|true|1|atex)$", str(r.get("ATEX") or ""), re.I))
-        m["L0"], m["LE"] = num(r.get("Prezzo_L0")), num(r.get("Prezzo_LE"))
+        m["price"] = num(r.get("Prezzo"))
         out.append(m)
     dest = Path(__file__).resolve().parent.parent / "js" / "data" / "catalogo.js"
     dest.write_text("/* GENERATO da tools/build_catalog_js.py — non modificare a mano. Fonte: %s */\nconst CATALOGO_DEPURECO = %s;\n"

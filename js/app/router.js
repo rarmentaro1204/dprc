@@ -12,7 +12,6 @@ function render(){
   $('#btnPrev').disabled=step===0;
   $('#btnNext').classList.toggle('app-hide',step===STEPS.length-1);
   $('#lbl-prev').textContent=t('back');$('#lbl-next').textContent=t('next');
-  $('#lbl-list').textContent=t('pricelist');
   window.scrollTo(0,0);
 }
 $('#btnPrev').onclick=()=>{if(step>0){step--;render();}};
@@ -25,7 +24,4 @@ function refreshTermDefaults(){
   });
 }
 $('#langSel').onchange=e=>{LANG=e.target.value;document.documentElement.lang=LANG;refreshTermDefaults();render();};
-$('#listSel').onchange=e=>{LIST=e.target.value;
-  // refresh prices on existing solutions to chosen list
-  S.solutions.forEach(s=>{const m=DATA.machines.find(x=>x.code===s.code);if(m)s.unit=priceOf(m);});
-  render();};
+

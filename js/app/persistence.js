@@ -100,7 +100,7 @@ function parseRegistryRows(buf){
     const g=(...k)=>{for(const key of Object.keys(r)){const kl=key.toLowerCase();if(k.some(x=>kl.includes(x)))return r[key];}return '';};
     return {prog:g('progressivo','prog'),num:g('numero_offerta','numero offerta','offerta'),
       date:g('data','date'),client:g('cliente','client'),rep:g('referente','rep'),
-      list:g('listino','list'),total:g('totale','total'),
+      total:g('totale','total'),
       machine:g('macchina','machine'),
       addedOptionals:g('optional_aggiunti','added_optionals'),note:g('note','notes')};
   }).filter(r=>r.prog||r.num);
@@ -139,9 +139,9 @@ async function ensureRegistryHandle(){
   return false;
 }
 function buildRegistryBlob(){
-  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Listino','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note'];
+  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note'];
   const aoa=[['DEPURECO — REGISTRO OFFERTE 2026'],[],header];
-  REGISTRY.rows.forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.list,r.total,r.machine||'',r.addedOptionals||'',r.note]));
+  REGISTRY.rows.forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note]));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Offerte');
   return XLSX.write(wb,{bookType:'xlsx',type:'array'});
@@ -176,7 +176,7 @@ async function writeRegistryEntry(){
     const acc=(s.accessories||[]).filter(a=>a.code||a.desc);
     return acc.length?`[${s.code}] `+acc.map(a=>a.desc?`${a.code||''} - ${a.desc}`.replace(/^ - /,''):a.code).join('; '):'';
   }).filter(Boolean).join(' || ');
-  const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,list:LIST,total:Number(grand.toFixed(2)),
+  const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
     machine:machineSummary,addedOptionals:addedOptSummary,note:''};
   REGISTRY.rows.push(row);S.offerNum=num;
   let saved=await writeRegistryBack();

@@ -40,8 +40,7 @@ function handleXlsx(e){
             name:norm(get('Nome','Name','name'))||code,
             desc:norm(get('Descrizione_EN','Descrizione','Description','desc')),
             atex:/^(si|sì|yes|x|true|1)$/i.test(norm(get('ATEX','Atex','atex'))),
-            L0:num(get('Prezzo_L0','L0','prezzo_l0')),
-            LE:num(get('Prezzo_LE','LE','prezzo_le')),
+            price:num(get('Prezzo','Prezzo_EUR','Price','Prezzo_L0','L0')),
             power:norm(get('Potenza','Power','power')),voltage:norm(get('Tensione','Voltage','voltage')),
             vacuum:norm(get('Depressione','Vacuum','vacuum')),airflow:norm(get('Portata_Aria','Airflow','airflow')),
             noise:norm(get('Rumorosita','Rumorosità','Noise','noise')),filter_type:norm(get('Tipo_Filtro','Filter type','filter_type')),
@@ -54,13 +53,23 @@ function handleXlsx(e){
         rows.forEach(r=>{const code=norm(r.Codice||r.Code||r.code);if(!code)return;
           const get=(...k)=>{for(const key of k){if(r[key]!=null&&r[key]!=='')return r[key];}return '';};
           out.accessories.push({code,desc:norm(get('Descrizione','Description','desc')),
-            L0:num(get('Prezzo_L0','L0')),LE:num(get('Prezzo_LE','LE'))});});}
+            price:num(get('Prezzo','Prezzo_EUR','Price','Prezzo_L0','L0'))});});}
       if(sR){const rows=sheetRows(wb.Sheets[sR],['nome','name','nombre','nom']);
         rows.forEach(r=>{const name=norm(r.Nome||r.Name||r.name);if(!name)return;
           out.reps.push({name,email:norm(r.Email||r.email),phone:norm(r.Telefono||r.Phone||r.phone)});});}
       if(!out.machines.length){flash(t('load_err'));return;}
       if(!out.reps.length)out.reps=EMBEDDED.reps;
       if(!out.accessories.length)out.accessories=EMBEDDED.accessories;
+      // fusione col catalogo incorporato: il file può contenere solo codice + prezzo (matrice prezzi);
+      // i dati tecnici restano quelli del catalogo, il file vince solo dove ha un valore.
+      const base=new Map(EMBEDDED.machines.map(m=>[m.code,m]));
+      const merged=new Map();
+      out.machines.forEach(m=>{const b=base.get(m.code)||{};const r={...b};
+        Object.keys(m).forEach(k=>{if(m[k]!==''&&m[k]!=null&&!(k==='atex'&&!m[k]&&b.atex))r[k]=m[k];});
+        if(!m.price&&b.price)r.price=b.price;
+        merged.set(m.code,r);});
+      base.forEach((b,c)=>{if(!merged.has(c))merged.set(c,b);});   // modelli non presenti nel file: restano (senza prezzo)
+      out.machines=[...merged.values()];
       DATA=out;loadedFromFile=true;loadedFileName=file.name;
       S.rep=DATA.reps[0]||S.rep;
       $('#xlsxTxt').textContent='✓ '+file.name;
