@@ -103,7 +103,7 @@ function parseRegistryRows(buf){
       total:g('totale','total'),
       machine:g('macchina','machine'),
       addedOptionals:g('optional_aggiunti','added_optionals'),note:g('note','notes'),
-      status:g('stato'),outcomeDate:g('data_esito'),wonValue:g('valore_vinto')};
+      status:g('stato'),outcomeDate:g('data_esito'),wonValue:g('valore_vinto'),validity:g('validita')};
   }).filter(r=>r.prog||r.num);
   // dettaglio macchine per offerta (foglio "Righe"): serve alle statistiche macchine della dashboard
   const sr=wb.SheetNames.find(n=>/righe|lines|dettaglio/i.test(n));
@@ -152,10 +152,10 @@ async function ensureRegistryHandle(){
   return false;
 }
 function buildRegistryBlob(){
-  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note','Stato','Data_Esito','Valore_Vinto'];
+  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note','Stato','Data_Esito','Valore_Vinto','Validita_Giorni'];
   const aoa=[['DEPURECO — REGISTRO OFFERTE 2026'],[],header];
   REGISTRY.rows.filter(r=>!r.demo).forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note,
-    ({won:'Vinta',lost:'Persa'})[rowStatus(r)]||'Aperta',r.outcomeDate||'',rowStatus(r)==='won'?rowWonValue(r):'']));
+    ({won:'Vinta',lost:'Persa'})[rowStatus(r)]||'Aperta',r.outcomeDate||'',rowStatus(r)==='won'?rowWonValue(r):'',r.validity||'']));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Offerte');
   const rig=[['Numero_Offerta','Pacchetto','Codice','Nome','Categoria','Qta','Valore_EUR','Venduta']];
@@ -195,7 +195,7 @@ async function writeRegistryEntry(){
     return acc.length?`[${s.code}] `+acc.map(a=>a.desc?`${a.code||''} - ${a.desc}`.replace(/^ - /,''):a.code).join('; '):'';
   }).filter(Boolean).join(' || ');
   const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
-    machine:machineSummary,addedOptionals:addedOptSummary,note:'',status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
+    machine:machineSummary,addedOptionals:addedOptSummary,note:'',validity:String(S.validity||'60'),status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
   REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
   let ghSaved=false;
   const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};

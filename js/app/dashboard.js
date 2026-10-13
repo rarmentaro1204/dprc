@@ -16,7 +16,9 @@ const DSH={
    sold:'Vendute',cat:'Per categoria',list:'Elenco offerte e esito',num:'Offerta',date:'Data',client:'Cliente',status:'Esito',wonQ:'Valore vinto (€)',
    lines:'Macchine vendute',sOpen:'Aperta',sWon:'Vinta',sLost:'Persa',monthNames:['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'],
    hintStatus:'Segna l’esito: Vinta o Persa. Se vinta, indica quali macchine sono state vendute.',saved:'Esito salvato',savedLocal:'Esito salvato (solo su questo browser: collega la cartella per scriverlo nel registro condiviso)',
-   none:'—',noSold:'Nessuna macchina ancora segnata come venduta.',noOff:'Nessuna macchina offerta.',allMachines:'Tutte'},
+   none:'—',noSold:'Nessuna macchina ancora segnata come venduta.',noOff:'Nessuna macchina offerta.',allMachines:'Tutte',
+   expTitle:'Scadenze offerte',expNext:'Prossima scadenza',expIn:'scade tra',expNone:'Nessuna offerta aperta con scadenza.',expExpired:'Scadute',expActive:'In scadenza (in ordine di scadenza)',
+   expDate:'Scade il',expLeft:'Tempo rimasto',expAgo:'scaduta da',expDays:'g',expToday:'scade oggi',expHint:'Solo offerte aperte. Clic su una riga per richiamare l\u2019offerta.',expEmpty:'Nessuna',expOpenN:'offerte aperte'},
  en:{title:'Sales dashboard',year:'Year',rep:'Salesperson',all:'All salespeople',back:'← Back to configurator',
    export:'⬇ Export register',nodata:'No offers registered for this period. Offers appear here when you press “Save offer” in the Offer step.',
    offers:'Offers',offered:'Offered value',won:'Won',wonVal:'Won value',lost:'Lost',open:'Open',
@@ -27,7 +29,9 @@ const DSH={
    sold:'Sold',cat:'By category',list:'Offers and outcome',num:'Offer',date:'Date',client:'Customer',status:'Outcome',wonQ:'Won value (€)',
    lines:'Machines sold',sOpen:'Open',sWon:'Won',sLost:'Lost',monthNames:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
    hintStatus:'Mark the outcome: Won or Lost. If won, tick which machines were sold.',saved:'Outcome saved',savedLocal:'Outcome saved (this browser only: link the folder to write it to the shared register)',
-   none:'—',noSold:'No machine marked as sold yet.',noOff:'No machines offered.',allMachines:'All'}
+   none:'—',noSold:'No machine marked as sold yet.',noOff:'No machines offered.',allMachines:'All',
+   expTitle:'Offer expiry',expNext:'Next expiry',expIn:'expires in',expNone:'No open offer with an expiry date.',expExpired:'Expired',expActive:'Expiring (by expiry date)',
+   expDate:'Expires on',expLeft:'Time left',expAgo:'expired',expDays:'d',expToday:'expires today',expHint:'Open offers only. Click a row to recall the offer.',expEmpty:'None',expOpenN:'open offers'}
 };
 function dt(k){return (DSH[LANG==='it'?'it':'en'])[k]||k;}
 
@@ -98,6 +102,60 @@ function machineStats(rows){
   });
   const arr=o=>Object.values(o).sort((a,b)=>b.times-a.times||b.value-a.value);
   return {off:arr(off),sold:arr(sold),cat};
+}
+
+/* ---------- scadenze ---------- */
+function offerExpiry(r){
+  const d=parseOfferDate(r.date);if(!d)return null;
+  const days=parseInt(String(r.validity==null||r.validity===''?60:r.validity).replace(/[^\d]/g,''),10);
+  const e=new Date(d.getFullYear(),d.getMonth(),d.getDate()+(isNaN(days)?60:days),23,59,59);
+  return e;
+}
+function fmtCountdown(ms){
+  const neg=ms<0;ms=Math.abs(ms);
+  const d=Math.floor(ms/86400000),h=Math.floor(ms%86400000/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);
+  const p=n=>String(n).padStart(2,'0');
+  return {neg,d,txt:`${d}${dt('expDays')} ${p(h)}:${p(m)}:${p(s)}`};
+}
+function expiryScope(){
+  return offerRows().filter(r=>rowStatus(r)==='open'&&(!dashRep||String(r.rep).trim()===dashRep)&&offerExpiry(r))
+    .map(r=>({r,exp:offerExpiry(r)})).sort((a,b)=>a.exp-b.exp);
+}
+function expirySection(){
+  const now=Date.now();
+  const all=expiryScope();
+  const expired=all.filter(x=>x.exp<now);
+  const active=all.filter(x=>x.exp>=now);
+  const next=active[0];
+  const lab=x=>{const idx=REGISTRY.rows.indexOf(x.r);
+    const left=x.exp-now;const c=fmtCountdown(left);
+    const tone=left<0?'#8c1412':(left<7*86400000?'#b35c00':'var(--navy)');
+    return `<tr data-expidx="${idx}" style="cursor:pointer"><td><b>${esc(x.r.num)}</b>${x.r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc(x.r.client)}</td>${dashRep?'':`<td>${esc(x.r.rep)}</td>`}<td class="r">${money(x.r.total)}</td><td>${x.exp.toLocaleDateString('it-IT')}</td>
+      <td class="r" style="font-weight:800;color:${tone}" data-cd="${x.exp.getTime()}">${left<0?dt('expAgo')+' ':''}${c.txt}</td></tr>`;};
+  const head=`<tr><th>${dt('num')}</th><th>${dt('client')}</th>${dashRep?'':`<th>${dt('rep')}</th>`}<th class="r">${dt('value')}</th><th>${dt('expDate')}</th><th class="r">${dt('expLeft')}</th></tr>`;
+  const tbl=(rows,empty)=>rows.length?`<div style="overflow:auto"><table class="ptable" style="font-size:13px">${head}${rows.map(lab).join('')}</table></div>`:`<p class="hint" style="margin:6px 0">${empty}</p>`;
+  const big=next?`<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:var(--navy);color:#fff;margin-bottom:14px">
+      <div style="flex:1;min-width:220px"><div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#FFD017">${dt('expNext')}</div>
+      <div style="font-size:16px;margin-top:2px"><b>${esc(next.r.num)}</b> · ${esc(next.r.client)}${dashRep?'':' · '+esc(next.r.rep)}</div>
+      <div style="font-size:12.5px;color:#bdbdbd">${dt('expDate')} ${next.exp.toLocaleDateString('it-IT')} · ${money(next.r.total)}</div></div>
+      <div style="font-size:34px;font-weight:900;letter-spacing:.5px;font-variant-numeric:tabular-nums" id="expBig" data-cd="${next.exp.getTime()}">${fmtCountdown(next.exp-now).txt}</div></div>`
+    :`<p class="hint">${dt('expNone')}</p>`;
+  return `<div class="card"><h2>${dt('expTitle')} <span style="font-size:15px;color:var(--muted)">· ${all.length} ${dt('expOpenN')}</span></h2>
+    <p class="hint" style="margin-bottom:12px">${dt('expHint')}</p>${big}
+    <h3 style="margin:10px 0 6px;font-size:15px;color:#8c1412">${dt('expExpired')} (${expired.length})</h3>${tbl(expired,dt('expEmpty'))}
+    <h3 style="margin:16px 0 6px;font-size:15px;color:var(--navy)">${dt('expActive')} (${active.length})</h3>${tbl(active,dt('expEmpty'))}</div>`;
+}
+let _dashTimer=null;
+function startCountdown(){
+  if(_dashTimer)clearInterval(_dashTimer);
+  _dashTimer=setInterval(()=>{
+    if(!DASH||!document.querySelector('[data-cd]')){clearInterval(_dashTimer);_dashTimer=null;return;}
+    const now=Date.now();
+    document.querySelectorAll('[data-cd]').forEach(el=>{
+      const ms=+el.dataset.cd-now,c=fmtCountdown(ms);
+      el.textContent=(ms<0&&el.tagName==='TD'?dt('expAgo')+' ':'')+c.txt;
+    });
+  },1000);
 }
 
 /* ---------- render ---------- */
@@ -211,7 +269,7 @@ function renderDashboard(){
         :`<span style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,80))}</span>`;
       return `<tr><td><b>${esc(r.num)}</b></td><td>${esc(parseOfferDate(r.date).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td>${dashRep?'':`<td>${esc(r.rep)}</td>`}<td class="r">${money(r.total)}</td><td>${stSel}</td><td>${wonCell}</td></tr>`;}).join('')}
     </table></div></div>`;
-  v.innerHTML=demoBanner+head+kpis+byRep+monthly+compare+machines+list;
+  v.innerHTML=demoBanner+head+kpis+expirySection()+byRep+monthly+compare+machines+list;
   wireDash();
 }
 async function dashPersist(row){
@@ -229,6 +287,8 @@ function wireDash(){
   if($('#d_demoToggle'))$('#d_demoToggle').onclick=()=>{setDemoVisible(!demoVisible());renderDashboard();};
   if($('#d_demoDel'))$('#d_demoDel').onclick=()=>{if(confirm('Eliminare le 20 offerte demo?')){removeDemo();renderDashboard();}};
   $('#d_export').onclick=()=>{try{downloadRegistry();}catch(e){flash(t('load_err'));}};
+  v.querySelectorAll('[data-expidx]').forEach(tr=>tr.onclick=()=>recallFromList(REGISTRY.rows[+tr.dataset.expidx]));
+  startCountdown();
   v.querySelectorAll('[data-pickrep]').forEach(tr=>tr.onclick=()=>{dashRep=tr.dataset.pickrep==='—'?'':tr.dataset.pickrep;renderDashboard();});
   v.querySelectorAll('[data-st]').forEach(sel=>sel.onchange=async()=>{
     const r=REGISTRY.rows[+sel.dataset.st];if(!r)return;
@@ -285,6 +345,8 @@ function offerRows(){return REGISTRY.rows.filter(r=>!r.demo||demoVisible());}
 function ensureDemoSeed(){
   let deleted=false;try{deleted=localStorage.getItem(DEMO_LS_DELETED)==='1';}catch(_){}
   if(!deleted&&!hasDemoRows()&&!hasRealRows()&&DATA.machines&&DATA.machines.length)installDemo();
+  // demo creata con una versione precedente (senza validità): rigenerala
+  else if(!deleted&&REGISTRY.rows.some(r=>r.demo&&r.validity==null)&&DATA.machines&&DATA.machines.length)installDemo();
 }
 function removeDemo(){
   REGISTRY.rows.filter(r=>r.demo).forEach(r=>{try{localStorage.removeItem(SNAP_LS+r.num);}catch(_){}});
@@ -313,6 +375,7 @@ function installDemo(){
     const rep=pick(reps);
     const num='DEMO-26-'+String(i+1).padStart(3,'0');
     const disc2=pick([0,0,5,5,10]);
+    const validity=pick([30,60,60,90]);
     const n=1+(rnd()<0.35?1:0);
     const sols=[],lines=[];
     for(let k=0;k<n;k++){
@@ -329,9 +392,9 @@ function installDemo(){
     const client=clients[i],contact=pick(contacts);
     const state=Object.assign({},tpl,{rep:{name:rep.name,email:rep.email||'',phone:rep.phone||''},offerNum:num,date:dateStr,client,contact,role:'Responsabile acquisti',
       phone:'',email:'demo@esempio.invalid',subject:'Offerta aspiratore industriale',intro:'',isRevisionOffer:false,solutions:sols,
-      discount:40,discount2:disc2,discount3:0,notes:''});
+      discount:40,discount2:disc2,discount3:0,notes:'',validity:String(validity)});
     const row={prog:i+1,num,date:dateStr,client,rep:rep.name,total:lines[0].value,
-      machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'DEMO',
+      machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'DEMO',validity:String(validity),
       status,outcomeDate:status==='open'?'':dateStr,wonValue:'',lines,demo:true};
     REGISTRY.rows.push(row);
     rememberSnapshotLocal(num,{__depurecoOffer:true,baseOfferNum:num,savedAt:new Date(2026,month,1).toISOString(),state});
