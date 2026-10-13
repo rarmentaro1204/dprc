@@ -2,6 +2,8 @@
 /* ============== INIT ============== */
 $('#brandLogo').innerHTML=logoDark(30);
 setupLoader();
+$('#dashBtn').onclick=()=>toggleDashboard(!DASH);
+loadRegistryLocal();
 if(!S.delivery)S.delivery=t('def_delivery');
 if(!S.packaging)S.packaging=t('def_packaging');
 if(!S.payment)S.payment=t('def_payment');

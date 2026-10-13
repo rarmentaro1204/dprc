@@ -96,21 +96,34 @@ function parseRegistryRows(buf){
   const findSheet=(names)=>{for(const n of wb.SheetNames){if(names.some(x=>n.toLowerCase().includes(x)))return n;}return wb.SheetNames[0];};
   const sheet=wb.Sheets[findSheet(['offert','offer','registro'])];
   const rows=sheetRows(sheet,['progressivo','numero_offerta','numero offerta','prog']);
-  return rows.map(r=>{
+  const out=rows.map(r=>{
     const g=(...k)=>{for(const key of Object.keys(r)){const kl=key.toLowerCase();if(k.some(x=>kl.includes(x)))return r[key];}return '';};
     return {prog:g('progressivo','prog'),num:g('numero_offerta','numero offerta','offerta'),
       date:g('data','date'),client:g('cliente','client'),rep:g('referente','rep'),
       total:g('totale','total'),
       machine:g('macchina','machine'),
-      addedOptionals:g('optional_aggiunti','added_optionals'),note:g('note','notes')};
+      addedOptionals:g('optional_aggiunti','added_optionals'),note:g('note','notes'),
+      status:g('stato'),outcomeDate:g('data_esito'),wonValue:g('valore_vinto')};
   }).filter(r=>r.prog||r.num);
+  // dettaglio macchine per offerta (foglio "Righe"): serve alle statistiche macchine della dashboard
+  const sr=wb.SheetNames.find(n=>/righe|lines|dettaglio/i.test(n));
+  if(sr){
+    const by={};
+    sheetRows(wb.Sheets[sr],['numero_offerta']).forEach(x=>{
+      const num=String(x.Numero_Offerta||'').trim();if(!num)return;
+      (by[num]=by[num]||[]).push({code:String(x.Codice||''),name:String(x.Nome||''),category:String(x.Categoria||''),
+        qty:Number(x.Qta)||1,value:x.Valore_EUR===''?null:Number(x.Valore_EUR),pkg:Number(x.Pacchetto)||1,won:/^s/i.test(String(x.Venduta||''))});
+    });
+    out.forEach(r=>{const k=String(r.num).trim();if(by[k])r.lines=by[k];});
+  }
+  return out;
 }
 function handleRegistry(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=ev=>{
     try{
-      REGISTRY.rows=parseRegistryRows(ev.target.result);
+      REGISTRY.rows=parseRegistryRows(ev.target.result);persistRegistryLocal();
       REGISTRY.fileName=file.name;
       $('#regTxt').textContent='✓ '+t('registry');
       applyNextOfferNumber();
@@ -139,11 +152,15 @@ async function ensureRegistryHandle(){
   return false;
 }
 function buildRegistryBlob(){
-  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note'];
+  const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note','Stato','Data_Esito','Valore_Vinto'];
   const aoa=[['DEPURECO — REGISTRO OFFERTE 2026'],[],header];
-  REGISTRY.rows.forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note]));
+  REGISTRY.rows.forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note,
+    ({won:'Vinta',lost:'Persa'})[rowStatus(r)]||'Aperta',r.outcomeDate||'',rowStatus(r)==='won'?rowWonValue(r):'']));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Offerte');
+  const rig=[['Numero_Offerta','Pacchetto','Codice','Nome','Categoria','Qta','Valore_EUR','Venduta']];
+  REGISTRY.rows.forEach(r=>rowLines(r).forEach(l=>rig.push([r.num,l.pkg||1,l.code,l.name,l.category||'',l.qty||1,l.value==null?'':l.value,l.won?'SI':'NO'])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rig),'Righe');
   return XLSX.write(wb,{bookType:'xlsx',type:'array'});
 }
 function downloadRegistry(){
@@ -177,8 +194,8 @@ async function writeRegistryEntry(){
     return acc.length?`[${s.code}] `+acc.map(a=>a.desc?`${a.code||''} - ${a.desc}`.replace(/^ - /,''):a.code).join('; '):'';
   }).filter(Boolean).join(' || ');
   const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
-    machine:machineSummary,addedOptionals:addedOptSummary,note:''};
-  REGISTRY.rows.push(row);S.offerNum=num;
+    machine:machineSummary,addedOptionals:addedOptSummary,note:'',status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
+  REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
   let saved=await writeRegistryBack();
   if(!saved) saved=await ensureRegistryHandleAndWrite();
   // guard against a same-moment race: re-read; if our number ended up duplicated, take the next free one and rewrite
@@ -196,7 +213,7 @@ async function writeRegistryEntry(){
           }else{
             prog=nextProgressivo();num=mkNum(prog);while(used.has(num)){prog++;num=mkNum(prog);}
           }
-          row.prog=prog;row.num=num;S.offerNum=num;REGISTRY.rows.push(row);
+          row.prog=prog;row.num=num;S.offerNum=num;REGISTRY.rows.push(row);persistRegistryLocal();
           await writeRegistryBack();
         }
       }

@@ -1,6 +1,7 @@
 /* Generatore Offerte Depureco — modulo "router" */
 /* ============== ROUTER ============== */
 function render(){
+  if(typeof DASH!=='undefined'&&DASH){renderDashboard();window.scrollTo(0,0);return;}
   maxReached=Math.max(maxReached,step);
   renderStepper();
   try{[stepCustomer,stepApplication,stepProduct,stepOptions,stepQuote][step]();}

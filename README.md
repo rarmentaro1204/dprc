@@ -46,6 +46,11 @@ brand/                   guidelines e logo
 - **Condizioni generali di vendita**: `js/data/general-terms.js` contiene un segnaposto. Inserire il testo legale ufficiale Depureco; non è stato copiato quello Dupuy.
 - **Immagini prodotto**: già scaricate in `images/` (una per modello, nome = Codice, es. `AC6512DZ2021.png`, 500 px) e richiamate in automatico quando si sceglie la macchina. Se colleghi una cartella con `Collega cartella`, le tue immagini hanno la precedenza.
 
+## Dashboard commerciale
+Pulsante **📊 Dashboard** in alto. Per commerciale e per anno: offerte mese per mese e totale anno (numero e valore), esito segnato dal commerciale (Aperta / Vinta / Persa, con le macchine effettivamente vendute e il valore vinto), analisi vinte vs offerte per numero e per valore, statistiche delle macchine offerte e vendute (per modello e per categoria) ed elenco offerte.
+- I dati sono nel **registro offerte** (`Registro_Offerte_DEPURECO_2026.xlsx`): fogli *Offerte* (con Stato, Data_Esito, Valore_Vinto) e *Righe* (una riga per macchina offerta). Con la cartella collegata (**Collega cartella**, Chrome/Edge) il registro è su disco/rete e condiviso tra i commerciali; senza, i dati restano nel browser (localStorage) e si esportano con «Esporta registro».
+- Il valore delle alternative: ogni offerta conta per il valore della prima soluzione; se più macchine sono alternative, il commerciale segna quella venduta.
+
 ## Categorie
 Le categorie del sito si sovrappongono (es. «Atex ed ACD» mescola aspiratori, depolveratori e impianti; «Accessori» contiene i pre-separatori). Qui ogni famiglia sta in **una sola categoria per tipo di macchina**, e ATEX/ACD è un filtro separato (colonna `Protezione`), con sottocategoria = serie (PUMA, FOX, TX…). Le regole sono in `scraper/categorie.py`; `data/Revisione_categorie.xlsx` (da `tools/report_categorie.py`) elenca ogni famiglia con categoria del sito vs assegnata. Un prodotto nuovo senza regola finisce in «DA VERIFICARE» e lo scraper lo segnala.
 
