@@ -57,7 +57,7 @@ async function ghTree(){
 }
 // legge tutte le offerte dalla repo e le unisce al registro locale (GitHub vince in caso di stesso numero)
 async function ghRefresh(){
-  if(!GH.ok)return false;
+  if(!GH.ok||(typeof DEMO!=='undefined'&&DEMO.on))return false;
   try{
     const files=await ghTree();
     let cache={};try{cache=JSON.parse(localStorage.getItem(GH_CACHE)||'{}');}catch(_){}

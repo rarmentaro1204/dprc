@@ -6,7 +6,7 @@ Foglio Accessori: editabile (codici e prezzi degli accessori non sono sul sito).
 Il Generatore Offerte la carica con "Carica listino": i prezzi si fondono col catalogo incorporato per Codice.
 Uso: python3 tools/build_price_matrix.py data/depureco_catalogo_AAAA-MM-GG.xlsx [--out excel/01_Matrice_Prezzi_Depureco.xlsx]
 """
-import argparse
+import argparse, json
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Protection, Border, Side
 from openpyxl.utils import get_column_letter
@@ -110,7 +110,8 @@ def main():
         cell = wc.cell(row=3, column=j, value=c)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill("solid", fgColor=GRIGIO)
-    wc.append(["Ufficio Commerciale Depureco", "depureco@depureco.com", "+39 011 9859117"])   # contatti pubblici: sostituire/aggiungere
+    for n in ["Sabrina Menon", "Gianluca Prina", "Federico Pistone", "Fabio Barberi", "Mariacristina Rolle", "Marco Devincentis", "Fabio Stura"]:
+        wc.append([n, "", ""])   # solo nome; email e telefono facoltativi
     for j, w in enumerate((34, 34, 22), 1):
         wc.column_dimensions[get_column_letter(j)].width = w
     wb.save(a.out)

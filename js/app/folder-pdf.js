@@ -104,6 +104,7 @@ async function loadFromDir(h){
   }
 }
 async function writeRegistryBack(){
+  if(typeof DEMO!=='undefined'&&DEMO.on)return false;   // dati demo: mai scritti
   try{
     if(REGISTRY.fileHandle&&REGISTRY.fileHandle.createWritable){
       const w=await REGISTRY.fileHandle.createWritable();

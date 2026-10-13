@@ -4,6 +4,7 @@
    Dati: REGISTRY.rows (registro offerte). Ogni riga: {prog,num,date,client,rep,total,machine,status,outcomeDate,wonValue,lines[]}
    status: 'open' | 'won' | 'lost'.  lines: [{code,name,category,qty,value,pkg,won}] una per macchina offerta. */
 let DASH=false, dashYear=null, dashRep='';
+const DEMO={on:false,backup:null};   // dati fittizi solo in memoria: non vengono mai salvati su registro, browser o GitHub
 const DSH={
  it:{title:'Dashboard commerciale',year:'Anno',rep:'Commerciale',all:'Tutti i commerciali',back:'← Torna al configuratore',
    export:'⬇ Esporta registro',nodata:'Nessuna offerta registrata per questo periodo. Le offerte compaiono qui quando premi «Salva offerta» nel passo Offerta.',
@@ -65,7 +66,7 @@ function offerLinesFromState(){
   });
 }
 const REG_LS='depureco_registry_v1';
-function persistRegistryLocal(){try{localStorage.setItem(REG_LS,JSON.stringify(REGISTRY.rows));}catch(_){}}
+function persistRegistryLocal(){if(typeof DEMO!=='undefined'&&DEMO.on)return;try{localStorage.setItem(REG_LS,JSON.stringify(REGISTRY.rows));}catch(_){}}
 function loadRegistryLocal(){try{const a=JSON.parse(localStorage.getItem(REG_LS)||'[]');if(Array.isArray(a)&&a.length&&!REGISTRY.rows.length)REGISTRY.rows=a;}catch(_){}}
 
 /* ---------- aggregazioni ---------- */
@@ -137,11 +138,13 @@ function renderDashboard(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <label class="fld" style="min-width:110px">${dt('year')}<select id="d_year">${years.map(y=>`<option${y===dashYear?' selected':''}>${y}</option>`).join('')}</select></label>
         <label class="fld" style="min-width:220px">${dt('rep')}<select id="d_rep"><option value="">${dt('all')}</option>${reps.map(r=>`<option${r===dashRep?' selected':''}>${esc(r)}</option>`).join('')}</select></label>
+        ${DEMO.on?`<button class="btn sm" id="d_demoOff" style="background:#FFD017;color:#171717">Esci dalla demo</button>`:`<button class="btn ghost sm" id="d_demo">Dati demo</button>`}
         <button class="btn ghost sm" id="d_export">${dt('export')}</button>
         <button class="btn nav sm" id="d_back">${dt('back')}</button>
       </div></div></div>`;
+  const demoBanner=DEMO.on?`<div class="card" style="background:#FFF6D1;border-color:#FFD017"><b>MODALITÀ DEMO</b> · 20 offerte fittizie con prezzi inventati, solo per mostrare la dashboard. Nulla viene salvato (né nel registro, né su GitHub).</div>`:'';
   if(!rows.length){
-    v.innerHTML=head+`<div class="card"><p class="hint" style="margin:0">${dt('nodata')}</p></div>`;wireDash();return;
+    v.innerHTML=demoBanner+head+`<div class="card"><p class="hint" style="margin:0">${dt('nodata')}</p></div>`;wireDash();return;
   }
   const kpi=(l,val,sub,c)=>`<div style="flex:1;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff">
       <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">${l}</div>
@@ -207,13 +210,14 @@ function renderDashboard(){
         :`<span style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,80))}</span>`;
       return `<tr><td><b>${esc(r.num)}</b></td><td>${esc(parseOfferDate(r.date).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td>${dashRep?'':`<td>${esc(r.rep)}</td>`}<td class="r">${money(r.total)}</td><td>${stSel}</td><td>${wonCell}</td></tr>`;}).join('')}
     </table></div></div>`;
-  v.innerHTML=head+kpis+byRep+monthly+compare+machines+list;
+  v.innerHTML=demoBanner+head+kpis+byRep+monthly+compare+machines+list;
   wireDash();
 }
 async function dashPersist(row){
   persistRegistryLocal();
   let ok=false;try{ok=await writeRegistryBack();}catch(_){}
-  if(GH.ok&&row){try{ok=(await ghUpdateOffer(row))||ok;}catch(e){console.error(e);}}
+  if(GH.ok&&row&&!row.demo){try{ok=(await ghUpdateOffer(row))||ok;}catch(e){console.error(e);}}
+  if(DEMO.on){flash('Demo: esito aggiornato solo in memoria');return;}
   flash(ok?dt('saved'):dt('savedLocal'));
 }
 function wireDash(){
@@ -221,6 +225,8 @@ function wireDash(){
   $('#d_year').onchange=e=>{dashYear=+e.target.value;renderDashboard();};
   $('#d_rep').onchange=e=>{dashRep=e.target.value;renderDashboard();};
   $('#d_back').onclick=()=>toggleDashboard(false);
+  if($('#d_demo'))$('#d_demo').onclick=()=>{loadDemo();renderDashboard();};
+  if($('#d_demoOff'))$('#d_demoOff').onclick=()=>exitDemo();
   $('#d_export').onclick=()=>{try{downloadRegistry();}catch(e){flash(t('load_err'));}};
   v.querySelectorAll('[data-pickrep]').forEach(tr=>tr.onclick=()=>{dashRep=tr.dataset.pickrep==='—'?'':tr.dataset.pickrep;renderDashboard();});
   v.querySelectorAll('[data-st]').forEach(sel=>sel.onchange=async()=>{
@@ -251,6 +257,7 @@ function wireDash(){
   });
 }
 async function toggleDashboard(on){
+  if(!on&&DEMO.on)exitDemo(true);
   DASH=on;
   if(on&&GH.ok){flash('Aggiorno le offerte da GitHub…');await ghRefresh();}
   const hide=on?'none':'';
@@ -258,4 +265,48 @@ async function toggleDashboard(on){
   const nb=document.querySelector('.navbar');if(nb)nb.style.display=hide;
   const b=$('#dashBtn');if(b)b.classList.toggle('on',on);
   render();
+}
+
+/* ---------- modalità DEMO: 20 offerte fittizie per mostrare la dashboard ---------- */
+function loadDemo(){
+  if(DEMO.on)return;
+  DEMO.backup=REGISTRY.rows;DEMO.on=true;
+  let seed=20261013;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;};
+  const pick=a=>a[Math.floor(rnd()*a.length)];
+  const reps=(DATA.reps||[]).map(r=>r.name).filter(Boolean);
+  const clients=['Metalmeccanica Alfa Srl','Officine Beta SpA','Fonderia Gamma Srl','Carpenteria Delta Srl','Plastica Epsilon SpA','Alimentari Zeta Srl','Legnami Eta Srl','Chimica Theta SpA','Stampi Iota Srl','Logistica Kappa Srl','Cartiera Lambda SpA','Ceramiche Mu Srl','Vernici Nu Srl','Saldature Xi Srl','Autoricambi Omicron Srl','Cantieri Pi SpA','Mangimi Rho Srl','Farmaceutica Sigma SpA','Trasformazioni Tau Srl','Impianti Upsilon Srl'];
+  const range={'Aspiratori industriali monofase e Wet&Dry':[1400,3600],'Aspiratori industriali trifase':[3800,9800],'Aspiratori trifase ad alta potenza':[18000,36000],
+    'Aspiratori per polveri tossiche e pericolose':[4500,9000],'Aspiratori per olio e truciolo':[3200,8500],'Aspiratori ad aria compressa':[900,2600],
+    'Aspiratori per fumi di saldatura':[1800,4200],'Aspiratori per sfridi, confezionamento e OEM':[1500,4800],'Depolveratori industriali':[3500,12000],
+    'Impianti di aspirazione centralizzati':[9000,28000],'Pre-separatori e separatori filtranti':[1200,5200]};
+  const machines=DATA.machines.filter(m=>range[m.category]);
+  const rows=[];
+  for(let i=0;i<20;i++){
+    const month=Math.min(9,Math.floor(i*10/20)+(rnd()<0.3?1:0));   // gen–ott, ordinati
+    const day=1+Math.floor(rnd()*27);
+    const date=new Date(2026,month,day).toLocaleDateString('it-IT');
+    const n=1+(rnd()<0.35?1:0);
+    const lines=[];let pkgNet=0;
+    for(let k=0;k<n;k++){
+      const m=pick(machines),[a,b]=range[m.category];
+      const qty=1+(rnd()<0.25?Math.floor(rnd()*3):0);
+      const unit=Math.round((a+rnd()*(b-a))/10)*10;
+      const net=Math.round(unit*qty*(1-(0.35+rnd()*0.15))*100)/100;   // sconto 35–50%
+      lines.push({code:m.code,name:m.name,category:m.category,qty,value:net,pkg:k+1,won:false});
+    }
+    pkgNet=lines[0].value;
+    const old=month<=7;const x=rnd();
+    const status=old?(x<0.42?'won':x<0.75?'lost':'open'):(x<0.2?'won':x<0.3?'lost':'open');
+    if(status==='won'){lines[0].won=true;}
+    rows.push({prog:i+1,num:'DEMO-26-'+String(i+1).padStart(3,'0'),date,client:clients[i],rep:pick(reps),total:pkgNet,
+      machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'',
+      status,outcomeDate:status==='open'?'':date,wonValue:'',lines,demo:true});
+  }
+  REGISTRY.rows=rows;
+  dashYear=2026;dashRep='';
+}
+function exitDemo(silent){
+  if(!DEMO.on)return;
+  REGISTRY.rows=DEMO.backup||[];DEMO.on=false;DEMO.backup=null;
+  if(!silent)renderDashboard();
 }

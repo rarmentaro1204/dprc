@@ -65,12 +65,16 @@ Il pulsante **GitHub** (in alto) salva ogni offerta in una repo **privata**: `of
 
 **Sicurezza:** il token resta nel `localStorage` del browser, mai nel codice né nella repo. L'app **rifiuta di scrivere se la repo è pubblica**. Ogni commerciale usa il proprio token (revocabile). Funziona anche senza «Collega cartella».
 
+## Operatori
+I commerciali che possono fare un'offerta sono in `js/data/defaults.js` (solo nome) e nel foglio *Commerciali* di `excel/01_Matrice_Prezzi_Depureco.xlsx` (che ha la precedenza quando si carica il listino).
+
 ## Richiamare un'offerta
 Pulsante **📚 Offerte** in alto (e «Richiama un'offerta» nel primo passo): elenco di tutte le offerte fatte, con ricerca per numero/cliente/macchina e filtri per commerciale ed esito. Un clic sulla riga e l'offerta si riapre da sola, come nuova revisione (`DPC-26-001_REV1`). Gli snapshot sono letti da GitHub (`offerte/<anno>/<NUMERO>.json`) o dalla copia locale del browser.
 
 ## Dashboard commerciale
 Pulsante **📊 Dashboard** in alto. Per commerciale e per anno: offerte mese per mese e totale anno (numero e valore), esito segnato dal commerciale (Aperta / Vinta / Persa, con le macchine effettivamente vendute e il valore vinto), analisi vinte vs offerte per numero e per valore, statistiche delle macchine offerte e vendute (per modello e per categoria) ed elenco offerte.
 - I dati sono nel **registro offerte** (`Registro_Offerte_DEPURECO_2026.xlsx`): fogli *Offerte* (con Stato, Data_Esito, Valore_Vinto) e *Righe* (una riga per macchina offerta). Con la cartella collegata (**Collega cartella**, Chrome/Edge) il registro è su disco/rete e condiviso tra i commerciali; senza, i dati restano nel browser (localStorage) e si esportano con «Esporta registro».
+- **Dati demo**: il pulsante «Dati demo» nella dashboard carica 20 offerte fittizie con prezzi inventati (7 commerciali, gen–ott 2026) per mostrare come funziona. Restano solo in memoria: non vengono scritte nel registro, nel browser né su GitHub, e spariscono con «Esci dalla demo» o tornando al configuratore.
 - Il valore delle alternative: ogni offerta conta per il valore della prima soluzione; se più macchine sono alternative, il commerciale segna quella venduta.
 
 ## Categorie
