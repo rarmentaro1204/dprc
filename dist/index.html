@@ -1556,10 +1556,10 @@ async function writeRegistryEntry(){
     return acc.length?`[${s.code}] `+acc.map(a=>a.desc?`${a.code||''} - ${a.desc}`.replace(/^ - /,''):a.code).join('; '):'';
   }).filter(Boolean).join(' || ');
   const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
-    machine:machineSummary,addedOptionals:addedOptSummary,note:'',validity:String(S.validity||'60'),status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
+    machine:machineSummary,addedOptionals:addedOptSummary,note:'',validity:String(S.validity||'60'),lang:LANG,status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
   REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
   let ghSaved=false;
-  const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};
+  const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),lang:LANG,state:JSON.parse(JSON.stringify(S))};
   if(GH.ok){
     try{
       const r=await ghSaveOffer(row,snapshot);ghSaved=!!r.saved;num=row.num;prog=row.prog;S.offerNum=num;persistRegistryLocal();
@@ -1652,6 +1652,8 @@ async function restoreOfferData(data,forcedBaseNum){
   const st=data.state;
   Object.keys(S).forEach(k=>delete S[k]);
   Object.assign(S,st);
+  // lingua dell'offerta: il documento si riapre nella stessa lingua in cui era stato fatto
+  if(data.lang&&I18N[data.lang]){LANG=data.lang;try{$('#langSel').value=LANG;document.documentElement.lang=LANG;}catch(_){}}
   // stored photos were session-only blob URLs and don't survive — clear them, then try to
   // re-fetch them by code from the currently linked images folder (same lookup used on folder link)
   S.solutions=(st.solutions||[]).map(s=>({...s,img:'',imgs:[],accessories:(s.accessories||[]).map(a=>({...a,img:''}))}));
@@ -2197,6 +2199,8 @@ function machineStats(rows){
   return {off:arr(off),sold:arr(sold),cat};
 }
 
+function langBadge(r){const l=(r.lang||'it').toUpperCase();return `<span class="badge code" title="Lingua dell'offerta">${l}</span>`;}
+
 /* ---------- scadenze ---------- */
 function offerExpiry(r){
   const d=parseOfferDate(r.date);if(!d)return null;
@@ -2223,7 +2227,7 @@ function expirySection(){
   const lab=x=>{const idx=REGISTRY.rows.indexOf(x.r);
     const left=x.exp-now;const c=fmtCountdown(left);
     const tone=left<0?'#8c1412':(left<7*86400000?'#b35c00':'var(--navy)');
-    return `<tr data-expidx="${idx}" style="cursor:pointer"><td><b>${esc(x.r.num)}</b>${x.r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc(x.r.client)}</td>${dashRep?'':`<td>${esc(x.r.rep)}</td>`}<td class="r">${money(x.r.total)}</td><td>${x.exp.toLocaleDateString('it-IT')}</td>
+    return `<tr data-expidx="${idx}" style="cursor:pointer"><td><b>${esc(x.r.num)}</b> ${langBadge(x.r)}${x.r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc(x.r.client)}</td>${dashRep?'':`<td>${esc(x.r.rep)}</td>`}<td class="r">${money(x.r.total)}</td><td>${x.exp.toLocaleDateString('it-IT')}</td>
       <td class="r" style="font-weight:800;color:${tone}" data-cd="${x.exp.getTime()}">${left<0?dt('expAgo')+' ':''}${c.txt}</td></tr>`;};
   const head=`<tr><th>${dt('num')}</th><th>${dt('client')}</th>${dashRep?'':`<th>${dt('rep')}</th>`}<th class="r">${dt('value')}</th><th>${dt('expDate')}</th><th class="r">${dt('expLeft')}</th></tr>`;
   const tbl=(rows,empty)=>rows.length?`<div style="overflow:auto"><table class="ptable" style="font-size:13px">${head}${rows.map(lab).join('')}</table></div>`:`<p class="hint" style="margin:6px 0">${empty}</p>`;
@@ -2294,7 +2298,7 @@ function renderDashboard(){
         <button class="btn ghost sm" id="d_export">${dt('export')}</button>
         <button class="btn nav sm" id="d_back">${dt('back')}</button>
       </div></div></div>`;
-  const demoBanner=(hasDemoRows()&&demoVisible())?`<div class="card" style="background:#FFF6D1;border-color:#FFD017"><b>OFFERTE DEMO</b> · 20 offerte fittizie con prezzi inventati (numero «DEMO-…»), richiamabili e modificabili. Restano solo in questo browser: non finiscono nel registro Excel né su GitHub. Si eliminano con «Elimina offerte demo».</div>`:'';
+  const demoBanner=(hasDemoRows()&&demoVisible())?`<div class="card" style="background:#FFF6D1;border-color:#FFD017"><b>OFFERTE DEMO</b> · 32 offerte fittizie (20 in italiano e 3 per ognuna delle altre lingue: en, es, fr, de) con prezzi inventati (numero «DEMO-…»), richiamabili e modificabili. Restano solo in questo browser: non finiscono nel registro Excel né su GitHub. Si eliminano con «Elimina offerte demo».</div>`:'';
   if(!rows.length){
     v.innerHTML=demoBanner+head+`<div class="card"><p class="hint" style="margin:0">${dt('nodata')}</p></div>`;wireDash();return;
   }
@@ -2360,7 +2364,7 @@ function renderDashboard(){
       const wonCell=s==='won'?`<div>${ls.map((l,li)=>`<label style="display:block;font-size:12px"><input type="checkbox" data-won="${idx}|${li}"${l.won?' checked':''}> ${esc(l.name||l.code)}${l.qty>1?' ×'+l.qty:''}${l.value?' · '+money(l.value):''}</label>`).join('')}
         <label style="font-size:12px;display:block;margin-top:4px">${dt('wonQ')} <input type="number" step="0.01" data-wonval="${idx}" value="${rowWonValue(r)}" style="width:120px;padding:5px;border:1px solid var(--line);border-radius:6px"></label></div>`
         :`<span style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,80))}</span>`;
-      return `<tr><td><b>${esc(r.num)}</b></td><td>${esc(parseOfferDate(r.date).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td>${dashRep?'':`<td>${esc(r.rep)}</td>`}<td class="r">${money(r.total)}</td><td>${stSel}</td><td>${wonCell}</td></tr>`;}).join('')}
+      return `<tr><td><b>${esc(r.num)}</b> ${langBadge(r)}</td><td>${esc(parseOfferDate(r.date).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td>${dashRep?'':`<td>${esc(r.rep)}</td>`}<td class="r">${money(r.total)}</td><td>${stSel}</td><td>${wonCell}</td></tr>`;}).join('')}
     </table></div></div>`;
   v.innerHTML=demoBanner+head+kpis+expirySection()+byRep+monthly+compare+machines+list;
   wireDash();
@@ -2439,7 +2443,7 @@ function ensureDemoSeed(){
   let deleted=false;try{deleted=localStorage.getItem(DEMO_LS_DELETED)==='1';}catch(_){}
   if(!deleted&&!hasDemoRows()&&!hasRealRows()&&DATA.machines&&DATA.machines.length)installDemo();
   // demo creata con una versione precedente (senza validità): rigenerala
-  else if(!deleted&&REGISTRY.rows.some(r=>r.demo&&r.validity==null)&&DATA.machines&&DATA.machines.length)installDemo();
+  else if(!deleted&&hasDemoRows()&&REGISTRY.rows.filter(r=>r.demo).length!==32&&DATA.machines&&DATA.machines.length)installDemo();
 }
 function removeDemo(){
   REGISTRY.rows.filter(r=>r.demo).forEach(r=>{try{localStorage.removeItem(SNAP_LS+r.num);}catch(_){}});
@@ -2461,8 +2465,15 @@ function installDemo(){
     'Impianti di aspirazione centralizzati':[9000,28000],'Pre-separatori e separatori filtranti':[1200,5200]};
   const machines=DATA.machines.filter(m=>range[m.category]);
   const tpl=JSON.parse(JSON.stringify(S));
-  for(let i=0;i<20;i++){
-    const month=Math.min(9,Math.floor(i*10/20)+(rnd()<0.3?1:0));
+  const LANGS=['en','es','fr','de'];
+  const EXTRA={
+    en:{clients:['Northern Engineering Ltd','Midlands Fabrication Ltd','Harbour Metalworks Ltd'],contacts:['James Walker','Emma Clarke','Oliver Hughes'],role:'Purchasing Manager'},
+    es:{clients:['Industrias Levante S.L.','Metalúrgica del Norte S.A.','Talleres Ibéricos S.L.'],contacts:['Carlos Márquez','Lucía Navarro','Javier Molina'],role:'Responsable de compras'},
+    fr:{clients:['Ateliers du Rhône SAS','Métallurgie Atlantique SA','Usinage Provence SARL'],contacts:['Pierre Lambert','Camille Dubois','Julien Moreau'],role:'Responsable achats'},
+    de:{clients:['Rheinische Metallbau GmbH','Süddeutsche Fertigung GmbH','Hanseatische Maschinen GmbH'],contacts:['Lukas Becker','Anna Hoffmann','Jonas Richter'],role:'Einkaufsleiter'}};
+  for(let i=0;i<32;i++){
+    const lang=i<20?'it':LANGS[Math.floor((i-20)/3)], ex=EXTRA[lang], k3=(i-20)%3;
+    const month=i<20?Math.min(9,Math.floor(i*10/20)+(rnd()<0.3?1:0)):Math.min(9,2+((i-20)*7%8));
     const maxDay=month===new Date().getMonth()&&new Date().getFullYear()===2026?Math.max(1,new Date().getDate()-1):27;   // mai date future
     const dateStr=new Date(2026,month,1+Math.floor(rnd()*maxDay)).toLocaleDateString('it-IT');
     const rep=pick(reps);
@@ -2482,15 +2493,16 @@ function installDemo(){
     const old=month<=7,x=rnd();
     const status=old?(x<0.42?'won':x<0.75?'lost':'open'):(x<0.2?'won':x<0.3?'lost':'open');
     if(status==='won')lines[0].won=true;
-    const client=clients[i],contact=pick(contacts);
-    const state=Object.assign({},tpl,{rep:{name:rep.name,email:rep.email||'',phone:rep.phone||''},offerNum:num,date:dateStr,client,contact,role:'Responsabile acquisti',
-      phone:'',email:'demo@esempio.invalid',subject:'Offerta aspiratore industriale',intro:'',isRevisionOffer:false,solutions:sols,
+    const client=i<20?clients[i]:ex.clients[k3],contact=i<20?pick(contacts):ex.contacts[k3];
+    const state=Object.assign({},tpl,{rep:{name:rep.name,email:rep.email||'',phone:rep.phone||''},offerNum:num,date:dateStr,client,contact,role:i<20?'Responsabile acquisti':ex.role,
+      phone:'',email:'demo@esempio.invalid',subject:(I18N[lang]&&I18N[lang].def_subject)||'Offerta aspiratore industriale',intro:'',
+      delivery:(I18N[lang]&&I18N[lang].def_delivery)||tpl.delivery,packaging:(I18N[lang]&&I18N[lang].def_packaging)||tpl.packaging,payment:(I18N[lang]&&I18N[lang].def_payment)||tpl.payment,isRevisionOffer:false,solutions:sols,
       discount:40,discount2:disc2,discount3:0,notes:'',validity:String(validity)});
-    const row={prog:i+1,num,date:dateStr,client,rep:rep.name,total:lines[0].value,
+    const row={prog:i+1,num,date:dateStr,client,rep:rep.name,lang,total:lines[0].value,
       machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'DEMO',validity:String(validity),
       status,outcomeDate:status==='open'?'':dateStr,wonValue:'',lines,demo:true};
     REGISTRY.rows.push(row);
-    rememberSnapshotLocal(num,{__depurecoOffer:true,baseOfferNum:num,savedAt:new Date(2026,month,1).toISOString(),state});
+    rememberSnapshotLocal(num,{__depurecoOffer:true,baseOfferNum:num,savedAt:new Date(2026,month,1).toISOString(),lang,state});
   }
   persistRegistryLocal();
 }
@@ -2746,7 +2758,7 @@ async function openOfferList(){
     const lab={won:'Vinta',lost:'Persa',open:'Aperta'};
     o.querySelector('#ol_tbl').innerHTML=`<tr><th>Offerta</th><th>Data</th><th>Cliente</th><th>Commerciale</th><th class="r">Valore</th><th>Esito</th><th>Macchine</th></tr>`+
       (rows.length?rows.map(r=>{const i=REGISTRY.rows.indexOf(r);
-        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b>${r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
+        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b> <span class="badge code">${String(r.lang||'it').toUpperCase()}</span>${r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
         :`<tr><td colspan="7" style="color:var(--muted);padding:16px">Nessuna offerta trovata.</td></tr>`);
     o.querySelectorAll('[data-row]').forEach(tr=>tr.onclick=()=>recallFromList(REGISTRY.rows[+tr.dataset.row]));
   };

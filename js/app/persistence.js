@@ -195,10 +195,10 @@ async function writeRegistryEntry(){
     return acc.length?`[${s.code}] `+acc.map(a=>a.desc?`${a.code||''} - ${a.desc}`.replace(/^ - /,''):a.code).join('; '):'';
   }).filter(Boolean).join(' || ');
   const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
-    machine:machineSummary,addedOptionals:addedOptSummary,note:'',validity:String(S.validity||'60'),status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
+    machine:machineSummary,addedOptionals:addedOptSummary,note:'',validity:String(S.validity||'60'),lang:LANG,status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
   REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
   let ghSaved=false;
-  const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};
+  const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),lang:LANG,state:JSON.parse(JSON.stringify(S))};
   if(GH.ok){
     try{
       const r=await ghSaveOffer(row,snapshot);ghSaved=!!r.saved;num=row.num;prog=row.prog;S.offerNum=num;persistRegistryLocal();
@@ -291,6 +291,8 @@ async function restoreOfferData(data,forcedBaseNum){
   const st=data.state;
   Object.keys(S).forEach(k=>delete S[k]);
   Object.assign(S,st);
+  // lingua dell'offerta: il documento si riapre nella stessa lingua in cui era stato fatto
+  if(data.lang&&I18N[data.lang]){LANG=data.lang;try{$('#langSel').value=LANG;document.documentElement.lang=LANG;}catch(_){}}
   // stored photos were session-only blob URLs and don't survive — clear them, then try to
   // re-fetch them by code from the currently linked images folder (same lookup used on folder link)
   S.solutions=(st.solutions||[]).map(s=>({...s,img:'',imgs:[],accessories:(s.accessories||[]).map(a=>({...a,img:''}))}));

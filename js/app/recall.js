@@ -60,7 +60,7 @@ async function openOfferList(){
     const lab={won:'Vinta',lost:'Persa',open:'Aperta'};
     o.querySelector('#ol_tbl').innerHTML=`<tr><th>Offerta</th><th>Data</th><th>Cliente</th><th>Commerciale</th><th class="r">Valore</th><th>Esito</th><th>Macchine</th></tr>`+
       (rows.length?rows.map(r=>{const i=REGISTRY.rows.indexOf(r);
-        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b>${r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
+        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b> <span class="badge code">${String(r.lang||'it').toUpperCase()}</span>${r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
         :`<tr><td colspan="7" style="color:var(--muted);padding:16px">Nessuna offerta trovata.</td></tr>`);
     o.querySelectorAll('[data-row]').forEach(tr=>tr.onclick=()=>recallFromList(REGISTRY.rows[+tr.dataset.row]));
   };
