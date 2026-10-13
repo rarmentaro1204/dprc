@@ -2349,7 +2349,12 @@ async function toggleDashboard(on){
    - Rifiuta di scrivere se la repo è PUBBLICA: i dati dei clienti non devono finire in una repo aperta. */
 const GH_LS='depureco_github_v1', GH_CACHE='depureco_github_cache_v1';
 const GH={cfg:{owner:'',repo:'',branch:'main',dir:'offerte',token:''},ok:false,msg:'',busy:false};
-function ghLoadCfg(){try{const c=JSON.parse(localStorage.getItem(GH_LS)||'null');if(c)Object.assign(GH.cfg,c);}catch(_){}}
+// valori predefiniti (modificabili): proprietario e repo privata delle offerte
+const GH_DEFAULT={owner:'rarmentaro1204',repo:'dprc-offerte',branch:'main',dir:'offerte'};
+function ghLoadCfg(){
+  Object.assign(GH.cfg,GH_DEFAULT);
+  try{const c=JSON.parse(localStorage.getItem(GH_LS)||'null');if(c)Object.keys(c).forEach(k=>{if(c[k])GH.cfg[k]=c[k];});}catch(_){}
+}
 function ghSaveCfg(){try{localStorage.setItem(GH_LS,JSON.stringify(GH.cfg));}catch(_){}}
 function ghHasCfg(){return !!(GH.cfg.token&&GH.cfg.owner&&GH.cfg.repo);}
 function ghRepoPath(){return `/repos/${encodeURIComponent(GH.cfg.owner)}/${encodeURIComponent(GH.cfg.repo)}`;}
@@ -2371,11 +2376,13 @@ function ghRenderBtn(){
 }
 // collegamento + controlli di sicurezza (repo privata, permesso di scrittura)
 async function ghConnect(silent){
-  if(!ghHasCfg()){ghSetState(false,'Non collegato');return false;}
+  if(!GH.cfg.token){ghSetState(false,'Manca il token');return false;}
+  if(!GH.cfg.owner||!GH.cfg.repo){ghSetState(false,'Mancano proprietario o repo: compila entrambi i campi');return false;}
   try{
     const r=await ghApi(ghRepoPath());
-    if(r.status===401||r.status===403){ghSetState(false,'Token non valido o scaduto');return false;}
-    if(r.status===404){ghSetState(false,'Repo non trovata o token senza accesso');return false;}
+    if(r.status===401){ghSetState(false,'Token non valido o scaduto: creane uno nuovo');return false;}
+    if(r.status===403){ghSetState(false,'Accesso negato (403): controlla permessi del token o limite di richieste');return false;}
+    if(r.status===404){ghSetState(false,`Repo «${GH.cfg.owner}/${GH.cfg.repo}» non trovata, oppure il token non ha accesso a quella repo`);return false;}
     if(!r.ok){ghSetState(false,'Errore GitHub '+r.status);return false;}
     if(r.body.private!==true){ghSetState(false,'La repo è PUBBLICA: per sicurezza non salvo dati dei clienti');return false;}
     if(r.body.permissions&&r.body.permissions.push===false){ghSetState(false,'Il token non ha il permesso di scrittura');return false;}
@@ -2489,8 +2496,8 @@ function ghOpenDialog(){
       2. GitHub → Settings → Developer settings → <i>Fine-grained tokens</i> → solo quella repo, permesso <b>Contents: Read and write</b>.<br>
       3. Incolla qui sotto proprietario, repo e token.</div>
     <div class="grid g2">
-      <label class="fld">Proprietario<input id="gh_owner" value="${esc(c.owner)}" placeholder="rarmentaro1204"></label>
-      <label class="fld">Repo privata<input id="gh_repo" value="${esc(c.repo)}" placeholder="dprc-offerte"></label>
+      <label class="fld">Proprietario<input id="gh_owner" value="${esc(c.owner||GH_DEFAULT.owner)}" placeholder="proprietario GitHub"></label>
+      <label class="fld">Repo privata<input id="gh_repo" value="${esc(c.repo||GH_DEFAULT.repo)}" placeholder="nome repo privata"></label>
       <label class="fld">Branch<input id="gh_branch" value="${esc(c.branch||'main')}"></label>
       <label class="fld">Cartella<input id="gh_dir" value="${esc(c.dir||'offerte')}"></label>
     </div>
