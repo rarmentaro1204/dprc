@@ -34,7 +34,7 @@ netlify.toml               publish = "dist", nessun build
 css/                       brand.css (design token Depureco) · app.css
 js/config/brand.js         anagrafica, logo, footer del documento
 js/data/                   i18n.js · general-terms.js ⚠ segnaposto · catalogo.js (generato) · defaults.js
-js/app/                    core · passi · quote · router · persistence · folder-pdf · xlsx-loader · dashboard
+js/app/                    core · passi · quote · router · persistence · folder-pdf · xlsx-loader · dashboard · github
 images/                    328 immagini prodotto <Codice>.png (generate dallo scraper)
 excel/                     📥 file da compilare / caricare nel configuratore
   01_Matrice_Prezzi_Depureco.xlsx     prezzi macchine (solo colonna Prezzo) + accessori + commerciali
@@ -54,6 +54,16 @@ presentazione/             presentazione ai commerciali (PowerPoint)
 - **Accessori** (foglio *Accessori*) e **commerciali** (foglio *Commerciali*): oggi c'è solo il contatto generico pubblico dell'azienda.
 - **Condizioni generali di vendita**: `js/data/general-terms.js` contiene un segnaposto. Inserire il testo legale ufficiale Depureco; non è stato copiato quello Dupuy.
 - **Immagini prodotto**: già scaricate in `images/` (una per modello, nome = Codice, es. `AC6512DZ2021.png`, 500 px) e richiamate in automatico quando si sceglie la macchina. Se colleghi una cartella con `Collega cartella`, le tue immagini hanno la precedenza.
+
+## Salvataggio automatico su GitHub
+Il pulsante **GitHub** (in alto) salva ogni offerta in una repo **privata**: `offerte/<anno>/<NUMERO>.json` (dati completi, richiamabili) e `<NUMERO>.pdf`. Il numero progressivo è globale tra i commerciali (si riserva creando il file; se un collega l'ha già preso passa al successivo). La dashboard legge le offerte e gli esiti da lì.
+
+**Configurazione (una volta per browser, poi è automatica all'apertura):**
+1. Creare una repo **privata** (es. `dprc-offerte`, non questa: `dprc` è pubblica).
+2. GitHub → Settings → Developer settings → *Fine-grained personal access tokens*: solo quella repo, permesso **Contents: Read and write**, con scadenza.
+3. Nel configuratore: **GitHub** → proprietario, repo, branch, cartella, token → *Collega e verifica*.
+
+**Sicurezza:** il token resta nel `localStorage` del browser, mai nel codice né nella repo. L'app **rifiuta di scrivere se la repo è pubblica**. Ogni commerciale usa il proprio token (revocabile). Funziona anche senza «Collega cartella».
 
 ## Dashboard commerciale
 Pulsante **📊 Dashboard** in alto. Per commerciale e per anno: offerte mese per mese e totale anno (numero e valore), esito segnato dal commerciale (Aperta / Vinta / Persa, con le macchine effettivamente vendute e il valore vinto), analisi vinte vs offerte per numero e per valore, statistiche delle macchine offerte e vendute (per modello e per categoria) ed elenco offerte.

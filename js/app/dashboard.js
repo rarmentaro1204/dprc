@@ -210,9 +210,10 @@ function renderDashboard(){
   v.innerHTML=head+kpis+byRep+monthly+compare+machines+list;
   wireDash();
 }
-async function dashPersist(msg){
+async function dashPersist(row){
   persistRegistryLocal();
   let ok=false;try{ok=await writeRegistryBack();}catch(_){}
+  if(GH.ok&&row){try{ok=(await ghUpdateOffer(row))||ok;}catch(e){console.error(e);}}
   flash(ok?dt('saved'):dt('savedLocal'));
 }
 function wireDash(){
@@ -232,7 +233,7 @@ function wireDash(){
       r.lines.forEach(l=>{l.won=(l.pkg||1)===first;});
       r.wonValue='';
     }else{r.lines=rowLines(r).map(l=>({...l,won:false}));r.wonValue='';}
-    await dashPersist();renderDashboard();
+    await dashPersist(r);renderDashboard();
   });
   v.querySelectorAll('[data-won]').forEach(cb=>cb.onchange=async()=>{
     const [i,li]=cb.dataset.won.split('|').map(Number);const r=REGISTRY.rows[i];
@@ -241,16 +242,17 @@ function wireDash(){
       const sum=r.lines.filter(l=>l.won).reduce((x,l)=>x+(Number(l.value)||0),0);
       r.wonValue=sum||'';
     }
-    await dashPersist();renderDashboard();
+    await dashPersist(r);renderDashboard();
   });
   v.querySelectorAll('[data-wonval]').forEach(inp=>inp.onchange=async()=>{
     const r=REGISTRY.rows[+inp.dataset.wonval];if(!r)return;
     r.wonValue=inp.value===''?'':Number(inp.value);r.wonManual=true;
-    await dashPersist();renderDashboard();
+    await dashPersist(r);renderDashboard();
   });
 }
-function toggleDashboard(on){
+async function toggleDashboard(on){
   DASH=on;
+  if(on&&GH.ok){flash('Aggiorno le offerte da GitHub…');await ghRefresh();}
   const hide=on?'none':'';
   $('#stepper').style.display=hide;
   const nb=document.querySelector('.navbar');if(nb)nb.style.display=hide;

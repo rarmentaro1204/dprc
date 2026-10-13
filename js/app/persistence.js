@@ -172,6 +172,7 @@ function downloadRegistry(){
 async function writeRegistryEntry(){
   const mkNum=p=>BRAND.offerPrefix+String(yr).slice(2)+'-'+String(p).padStart(3,'0');
   await ensureRegistryHandle();
+  if(GH.ok)await ghRefresh();                          // numero progressivo globale (tutti i commerciali)
   const linked=await reloadRegistry();               // pull colleagues' latest numbers if the file is shared
   // a recalled offer already carries its own "<original>_REVn" number (see doRecall) —
   // keep it as-is instead of assigning a fresh progressive one
@@ -196,7 +197,16 @@ async function writeRegistryEntry(){
   const row={prog,num,date:S.date,client:S.client,rep:S.rep.name,total:Number(grand.toFixed(2)),
     machine:machineSummary,addedOptionals:addedOptSummary,note:'',status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
   REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
+  let ghSaved=false;
+  if(GH.ok){
+    try{
+      const base=String(num).replace(/_REV\d+$/i,'');
+      const snapshot={__depurecoOffer:true,baseOfferNum:base,savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};
+      const r=await ghSaveOffer(row,snapshot);ghSaved=!!r.saved;num=row.num;prog=row.prog;S.offerNum=num;persistRegistryLocal();
+    }catch(e){console.error(e);flash('GitHub: offerta NON salvata ('+e.message+')');}
+  }
   let saved=await writeRegistryBack();
+  if(!saved&&ghSaved)saved=true;                       // salvata su GitHub anche senza cartella collegata
   if(!saved) saved=await ensureRegistryHandleAndWrite();
   // guard against a same-moment race: re-read; if our number ended up duplicated, take the next free one and rewrite
   if(saved&&linked){
@@ -219,7 +229,7 @@ async function writeRegistryEntry(){
       }
     }catch(_){}
   }
-  return {saved,num};
+  return {saved,num,row,ghSaved};
 }
 // single button: generate + save the PDF, register the offer number in the registry file,
 // persist the client's data, then reset the form for the next offer (only after everything succeeded)
@@ -372,9 +382,10 @@ async function saveOfferComplete(){
   const btn=document.getElementById('btnSaveAll');
   if(btn){btn.disabled=true;btn.textContent='⏳ '+t('saving_all');}
   try{
-    let pdfOk=false;
+    let pdfOk=false, pdfBlob=null;
+    if(GH.ok&&!window.showDirectoryPicker){ try{pdfBlob=await buildPdfBlob();}catch(e){console.error(e);} }
     if(window.showDirectoryPicker){
-      try{ const blob=await buildPdfBlob(); const dir=await getSaveDir();
+      try{ const blob=await buildPdfBlob(); pdfBlob=blob; const dir=await getSaveDir();
         const fh=await dir.getFileHandle(suggestedFilename()+'.pdf',{create:true});
         const w=await fh.createWritable(); await w.write(blob); await w.close();
         pdfOk=true;
@@ -386,7 +397,8 @@ async function saveOfferComplete(){
         }catch(e){console.error('snapshot save failed',e);}
       }catch(e){ if(!(e&&e.name==='AbortError')) console.error(e); }
     }
-    const {saved:regOk,num}=await writeRegistryEntry();
+    const {saved:regOk,num,row:regRow,ghSaved}=await writeRegistryEntry();
+    if(ghSaved&&pdfBlob){ try{pdfOk=(await ghUploadPdf(regRow,pdfBlob))||pdfOk;}catch(e){console.error(e);} }
     let clientRes={target:'none'};
     if(regOk){ try{clientRes=await saveClientIfNew();}catch(_){} }
     if(regOk){
