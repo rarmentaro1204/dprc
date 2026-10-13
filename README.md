@@ -6,8 +6,18 @@ Tre cose in una repo:
 2. **Scraper del catalogo** (`scraper/scrape_depureco.py`): estrae i modelli da www.depureco.com in Excel, con la stessa struttura del listino Dupuy.
 3. **Confronto Dupuy vs Depureco** (`scraper/confronta_dupuy_depureco.py`, richiede il listino Dupuy in locale; l'output non è versionato): per ogni modello Dupuy trova il Depureco più vicino per potenza, portata, depressione, capacità.
 
+## File Excel (cartella `excel/`)
+| File | Chi lo compila | Pulsante nel configuratore |
+|---|---|---|
+| `01_Matrice_Prezzi_Depureco.xlsx` | Ufficio commerciale: prezzi macchine, accessori, commerciali | Carica listino |
+| `02_Matrice_Optional_Depureco.xlsx` | Prezzi degli optional per macchina | Carica matrice optional |
+| `03_Registro_Offerte_DEPURECO_2026.xlsx` | Nessuno: lo scrive il configuratore (cartella collegata) | Registro / Collega cartella |
+| `04_Contatti_Clienti_Depureco.xlsx` | Anagrafica clienti | Carica clienti |
+
+Rigenerarli (es. dopo un nuovo scraping): `python3 tools/build_excel_templates.py data/depureco_catalogo_<data>.xlsx`.
+
 ## Pubblicazione (GitHub → Netlify)
-Netlify pubblica solo la cartella `dist/` (`netlify.toml`), cioè il file unico con le foto. Dopo ogni modifica: `python3 tools/build_single_html.py`, poi commit e push (incluso `dist/index.html`). Nessun comando di build su Netlify. Le pagine hanno `noindex`: strumento interno, con prezzi e listino.
+Netlify pubblica solo la cartella `dist/` (`netlify.toml`), cioè il file unico con le foto. Su Netlify: *Add new site → Import from Git → repo `dprc`, branch `main`*; Build command vuoto, Publish directory `dist` (già nel `netlify.toml`). Dopo ogni modifica: `python3 tools/build_single_html.py`, poi commit e push (incluso `dist/index.html`). Nessun comando di build su Netlify. Le pagine hanno `noindex`: strumento interno, con prezzi e listino.
 
 ## Avvio rapido
 ```bash
@@ -18,30 +28,29 @@ Serve un server locale (o GitHub Pages): i file JS sono separati. Il catalogo (3
 
 ## Struttura
 ```
-index.html               entry point (carica CSS e script nell'ordine corretto)
-css/brand.css            design token Depureco (colori, font) — qui si cambia il brand
-css/app.css              layout e componenti
-js/config/brand.js       anagrafica, logo, footer del documento
-js/data/i18n.js          traduzioni
-js/data/general-terms.js condizioni generali di vendita  ⚠ PLACEHOLDER
-js/data/catalogo.js      catalogo macchine (GENERATO da tools/build_catalog_js.py)
-js/data/defaults.js      dati di avvio (commerciali, optional, ricambi)
-js/app/*.js              logica: core, passi, quote/documento, router, persistenza, cartella+PDF, loader Excel
-scraper/                 scraper catalogo + confronto Dupuy/Depureco
-scraper/categorie.py     regole di categorizzazione (UNA categoria per tipo di macchina + Protezione ATEX/ACD/Standard)
-tools/build_catalog_js.py  Excel → js/data/catalogo.js
-tools/build_price_matrix.py  genera la matrice prezzi da compilare
-tools/report_categorie.py    report di revisione categorie
-tools/build_single_html.py   genera dist/index.html: file unico CON immagini incorporate (~9 MB)
-dist/index.html          l'unico file pubblicato da Netlify (vedi netlify.toml)
-images/                  immagini prodotto <Codice>.png (generate dallo scraper)
-data/                    catalogo Excel (il confronto *_vs_dupuy.xlsx resta solo locale: contiene prezzi interni Dupuy)
-brand/                   guidelines e logo
-.claude/agents/depureco-scraper.md   agent Claude Code per rilanciare lo scraping
+index.html                 versione di sviluppo (carica css/ e js/)
+dist/index.html            ✅ file unico CON foto: è l'unico file pubblicato da Netlify (netlify.toml)
+netlify.toml               publish = "dist", nessun build
+css/                       brand.css (design token Depureco) · app.css
+js/config/brand.js         anagrafica, logo, footer del documento
+js/data/                   i18n.js · general-terms.js ⚠ segnaposto · catalogo.js (generato) · defaults.js
+js/app/                    core · passi · quote · router · persistence · folder-pdf · xlsx-loader · dashboard
+images/                    328 immagini prodotto <Codice>.png (generate dallo scraper)
+excel/                     📥 file da compilare / caricare nel configuratore
+  01_Matrice_Prezzi_Depureco.xlsx     prezzi macchine (solo colonna Prezzo) + accessori + commerciali
+  02_Matrice_Optional_Depureco.xlsx   prezzi optional per macchina
+  03_Registro_Offerte_DEPURECO_2026.xlsx  registro offerte vuoto (alimenta la dashboard)
+  04_Contatti_Clienti_Depureco.xlsx   clienti per l'autocompletamento
+data/                      catalogo sorgente (Excel dello scraper) e report revisione categorie
+scraper/                   scrape_depureco.py · categorie.py · confronta_dupuy_depureco.py
+tools/                     build_catalog_js · build_price_matrix · build_excel_templates · build_single_html · report_categorie
+brand/                     BRAND_GUIDELINES.md · logo
+presentazione/             presentazione ai commerciali (PowerPoint)
+.claude/agents/            agent Claude Code per rilanciare lo scraping
 ```
 
 ## Cose da completare (non reperibili dal sito)
-- **Prezzi** (listino unico, niente L0/LE): Depureco non li pubblica. Compilare **solo la colonna Prezzo** di `data/Matrice_Prezzi_Depureco.xlsx` (tutte le altre celle sono bloccate) e caricarla nel generatore con **Carica listino**: i prezzi si abbinano per Codice al catalogo incorporato. Per renderli permanenti: `python3 tools/build_catalog_js.py <file con colonna Prezzo>`. Finché vuoti: "Prezzo da definire".
+- **Prezzi** (listino unico, niente L0/LE): Depureco non li pubblica. Compilare **solo la colonna Prezzo** di `excel/01_Matrice_Prezzi_Depureco.xlsx` (tutte le altre celle sono bloccate) e caricarla nel generatore con **Carica listino**: i prezzi si abbinano per Codice al catalogo incorporato. Per renderli permanenti: `python3 tools/build_catalog_js.py <file con colonna Prezzo>`. Finché vuoti: "Prezzo da definire".
 - **Accessori** (foglio *Accessori*) e **commerciali** (foglio *Commerciali*): oggi c'è solo il contatto generico pubblico dell'azienda.
 - **Condizioni generali di vendita**: `js/data/general-terms.js` contiene un segnaposto. Inserire il testo legale ufficiale Depureco; non è stato copiato quello Dupuy.
 - **Immagini prodotto**: già scaricate in `images/` (una per modello, nome = Codice, es. `AC6512DZ2021.png`, 500 px) e richiamate in automatico quando si sceglie la macchina. Se colleghi una cartella con `Collega cartella`, le tue immagini hanno la precedenza.

@@ -787,7 +787,8 @@ function parseMatrixSheet(sheet){
 }
 function applyMatrixWorkbook(wb,fileName){
   const find=k=>wb.SheetNames.find(n=>n.toLowerCase().includes(k));
-  const s0=find('optional_l0')||find('l0'),sE=find('optional_le')||find('_le');
+  // listino unico Depureco: foglio "Optional_Prezzi" (compatibile con i vecchi fogli optional_l0 / optional_le)
+  const s0=find('optional_prezzi')||find('optional_l0')||find('l0'),sE=find('optional_le')||find('_le');
   const p0=s0?parseMatrixSheet(wb.Sheets[s0]):null,pE=sE?parseMatrixSheet(wb.Sheets[sE]):null;
   if(!p0&&!pE)return false;
   // catalogue (group / order / description per optional) + prices still to verify
@@ -821,7 +822,7 @@ function handleMatrix(e){
     try{
       const wb=XLSX.read(ev.target.result,{type:'array'});
       if(!applyMatrixWorkbook(wb,file.name)){flash(t('matrix_err'));return;}
-      if($('#matTxt'))$('#matTxt').textContent='âœ“ '+file.name;
+      if($('#matTxt'))$('#matTxt').textContent='✓ '+file.name;
       flash(t('matrix_ok').replace('%n',MATRIX_INFO.machines));
       if(step===3)render();
     }catch(err){console.error(err);flash(t('matrix_err'));}

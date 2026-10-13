@@ -4,7 +4,7 @@
 Foglio Macchine: tutti i dati (codice, famiglia, nome, specifiche chiave) sono BLOCCATI; solo "Prezzo" (celle gialle) è modificabile.
 Foglio Accessori: editabile (codici e prezzi degli accessori non sono sul sito).
 Il Generatore Offerte la carica con "Carica listino": i prezzi si fondono col catalogo incorporato per Codice.
-Uso: python3 tools/build_price_matrix.py data/depureco_catalogo_AAAA-MM-GG.xlsx [--out data/Matrice_Prezzi_Depureco.xlsx]
+Uso: python3 tools/build_price_matrix.py data/depureco_catalogo_AAAA-MM-GG.xlsx [--out excel/01_Matrice_Prezzi_Depureco.xlsx]
 """
 import argparse
 from openpyxl import Workbook, load_workbook
@@ -20,7 +20,7 @@ LARG = {"Codice": 20, "Famiglia": 22, "Categoria": 38, "Sottocategoria": 22, "Pr
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("catalogo")
-    ap.add_argument("--out", default="data/Matrice_Prezzi_Depureco.xlsx")
+    ap.add_argument("--out", default="excel/01_Matrice_Prezzi_Depureco.xlsx")
     a = ap.parse_args()
     ws0 = load_workbook(a.catalogo)["Macchine"]
     tutte = list(ws0.iter_rows(values_only=True))
@@ -39,7 +39,7 @@ def main():
         ("", False),
         ("Cosa compilare: SOLO la colonna Prezzo (celle gialle) del foglio Macchine. Tutte le altre celle sono bloccate.", False),
         ("1. Per ogni macchina inserire il prezzo di listino in euro (numero, senza simbolo €, es. 4250 oppure 4250,50). Lasciare vuoto se il prezzo non è definito.", False),
-        ("2. Foglio Accessori: aggiungere una riga per ogni accessorio/ricambio (Codice, Descrizione, Prezzo).", False),
+        ("2. Foglio Accessori: aggiungere una riga per ogni accessorio/ricambio (Codice, Descrizione, Prezzo). Foglio Commerciali: nome, mail e telefono di chi firma le offerte.", False),
         ("3. Salvare il file e, nel Generatore Offerte, cliccare «Carica listino» e scegliere questo file.", False),
         ("", False),
         ("Il listino è unico (non esistono L0/LE). I dati tecnici restano quelli del catalogo: il file porta solo i prezzi, abbinati per Codice.", False),
@@ -102,6 +102,17 @@ def main():
         wa.cell(row=n, column=3).number_format = '#,##0.00 "€"'
         wa.cell(row=n, column=3).fill = PatternFill("solid", fgColor=GIALLO)
     wa.freeze_panes = "A5"
+
+    wc = wb.create_sheet("Commerciali")
+    wc["A1"] = "DEPURECO — COMMERCIALI (compaiono nel menu «Referente» e sull'offerta)"
+    wc["A1"].font = Font(bold=True, size=14, color=ROSSO)
+    for j, c in enumerate(["Nome", "Email", "Telefono"], 1):
+        cell = wc.cell(row=3, column=j, value=c)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor=GRIGIO)
+    wc.append(["Ufficio Commerciale Depureco", "depureco@depureco.com", "+39 011 9859117"])   # contatti pubblici: sostituire/aggiungere
+    for j, w in enumerate((34, 34, 22), 1):
+        wc.column_dimensions[get_column_letter(j)].width = w
     wb.save(a.out)
     print(f"{len(righe)} modelli -> {a.out}")
 
