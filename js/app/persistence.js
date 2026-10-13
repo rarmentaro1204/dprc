@@ -154,12 +154,12 @@ async function ensureRegistryHandle(){
 function buildRegistryBlob(){
   const header=['Progressivo','Numero_Offerta','Data','Cliente','Referente','Totale_EUR','Macchina_Offerta','Optional_Aggiunti','Note','Stato','Data_Esito','Valore_Vinto'];
   const aoa=[['DEPURECO — REGISTRO OFFERTE 2026'],[],header];
-  REGISTRY.rows.forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note,
+  REGISTRY.rows.filter(r=>!r.demo).forEach(r=>aoa.push([r.prog,r.num,r.date,r.client,r.rep,r.total,r.machine||'',r.addedOptionals||'',r.note,
     ({won:'Vinta',lost:'Persa'})[rowStatus(r)]||'Aperta',r.outcomeDate||'',rowStatus(r)==='won'?rowWonValue(r):'']));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Offerte');
   const rig=[['Numero_Offerta','Pacchetto','Codice','Nome','Categoria','Qta','Valore_EUR','Venduta']];
-  REGISTRY.rows.forEach(r=>rowLines(r).forEach(l=>rig.push([r.num,l.pkg||1,l.code,l.name,l.category||'',l.qty||1,l.value==null?'':l.value,l.won?'SI':'NO'])));
+  REGISTRY.rows.filter(r=>!r.demo).forEach(r=>rowLines(r).forEach(l=>rig.push([r.num,l.pkg||1,l.code,l.name,l.category||'',l.qty||1,l.value==null?'':l.value,l.won?'SI':'NO'])));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rig),'Righe');
   return XLSX.write(wb,{bookType:'xlsx',type:'array'});
 }

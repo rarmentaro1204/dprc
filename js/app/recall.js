@@ -54,21 +54,21 @@ async function openOfferList(){
   const st=o.querySelector('#ol_status');
   const draw=()=>{
     const q=o.querySelector('#ol_q').value.trim().toLowerCase(),rep=o.querySelector('#ol_rep').value,sf=o.querySelector('#ol_st').value;
-    const rows=REGISTRY.rows.filter(r=>(!rep||String(r.rep).trim()===rep)&&(!sf||rowStatus(r)===sf)&&
+    const rows=REGISTRY.rows.filter(r=>(!r.demo||demoVisible())&&(!rep||String(r.rep).trim()===rep)&&(!sf||rowStatus(r)===sf)&&
       (!q||(String(r.num)+' '+r.client+' '+r.machine+' '+r.rep).toLowerCase().includes(q)))
       .sort((a,b)=>(parseOfferDate(b.date)||0)-(parseOfferDate(a.date)||0)||(+b.prog||0)-(+a.prog||0));
     const lab={won:'Vinta',lost:'Persa',open:'Aperta'};
     o.querySelector('#ol_tbl').innerHTML=`<tr><th>Offerta</th><th>Data</th><th>Cliente</th><th>Commerciale</th><th class="r">Valore</th><th>Esito</th><th>Macchine</th></tr>`+
       (rows.length?rows.map(r=>{const i=REGISTRY.rows.indexOf(r);
-        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b></td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
+        return `<tr data-row="${i}" style="cursor:pointer"><td><b>${esc(r.num)}</b>${r.demo?' <span class="badge" style="background:#FFD017;color:#171717">DEMO</span>':''}</td><td>${esc((parseOfferDate(r.date)||new Date()).toLocaleDateString('it-IT'))}</td><td>${esc(r.client)}</td><td>${esc(r.rep)}</td><td class="r">${money(r.total)}</td><td>${lab[rowStatus(r)]}</td><td style="color:var(--muted);font-size:12px">${esc(String(r.machine||'').slice(0,70))}</td></tr>`;}).join('')
         :`<tr><td colspan="7" style="color:var(--muted);padding:16px">Nessuna offerta trovata.</td></tr>`);
     o.querySelectorAll('[data-row]').forEach(tr=>tr.onclick=()=>recallFromList(REGISTRY.rows[+tr.dataset.row]));
   };
   const fillReps=()=>{const sel=o.querySelector('#ol_rep'),cur=sel.value;
-    const reps=[...new Set(REGISTRY.rows.map(r=>String(r.rep||'').trim()).filter(Boolean))].sort();
+    const reps=[...new Set(REGISTRY.rows.filter(r=>!r.demo||demoVisible()).map(r=>String(r.rep||'').trim()).filter(Boolean))].sort();
     sel.innerHTML='<option value="">Tutti i commerciali</option>'+reps.map(n=>`<option${n===cur?' selected':''}>${esc(n)}</option>`).join('');};
   ['#ol_q','#ol_rep','#ol_st'].forEach(s=>o.querySelector(s).addEventListener('input',draw));
-  loadRegistryLocal();fillReps();draw();
+  loadRegistryLocal();ensureDemoSeed();fillReps();draw();
   if(GH.ok){const ok=await ghRefresh();fillReps();draw();st.textContent=ok?`${REGISTRY.rows.length} offerte · clicca una riga per richiamarla`:'Elenco da GitHub non aggiornato';}
   else st.textContent=`${REGISTRY.rows.length} offerte · clicca una riga per richiamarla`;
 }

@@ -60,7 +60,7 @@ function addItem(si,o){
   stepOptions();
 }
 function nextProgressivo(){
-  let max=0;REGISTRY.rows.forEach(r=>{const p=parseInt(r.prog||r.Progressivo||0,10);if(p>max)max=p;});
+  let max=0;REGISTRY.rows.filter(r=>!r.demo).forEach(r=>{const p=parseInt(r.prog||r.Progressivo||0,10);if(p>max)max=p;});   // le offerte demo non contano
   return max+1;
 }
 function applyNextOfferNumber(){

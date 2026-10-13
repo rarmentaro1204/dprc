@@ -4,7 +4,7 @@
    Dati: REGISTRY.rows (registro offerte). Ogni riga: {prog,num,date,client,rep,total,machine,status,outcomeDate,wonValue,lines[]}
    status: 'open' | 'won' | 'lost'.  lines: [{code,name,category,qty,value,pkg,won}] una per macchina offerta. */
 let DASH=false, dashYear=null, dashRep='';
-const DEMO={on:false,backup:null};   // dati fittizi solo in memoria: non vengono mai salvati su registro, browser o GitHub
+const DEMO={on:false};   // (non più usato: vedi offerte demo persistenti in fondo al file)
 const DSH={
  it:{title:'Dashboard commerciale',year:'Anno',rep:'Commerciale',all:'Tutti i commerciali',back:'← Torna al configuratore',
    export:'⬇ Esporta registro',nodata:'Nessuna offerta registrata per questo periodo. Le offerte compaiono qui quando premi «Salva offerta» nel passo Offerta.',
@@ -71,7 +71,7 @@ function loadRegistryLocal(){try{const a=JSON.parse(localStorage.getItem(REG_LS)
 
 /* ---------- aggregazioni ---------- */
 function dashRows(){
-  return REGISTRY.rows.filter(r=>{
+  return offerRows().filter(r=>{
     const d=parseOfferDate(r.date);
     if(!d||d.getFullYear()!==dashYear)return false;
     if(dashRep&&String(r.rep).trim()!==dashRep)return false;
@@ -124,11 +124,12 @@ function monthlyChart(months){
 function renderDashboard(){
   const v=$('#view');
   loadRegistryLocal();
-  const years=[...new Set(REGISTRY.rows.map(r=>{const d=parseOfferDate(r.date);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
+  ensureDemoSeed();
+  const years=[...new Set(offerRows().map(r=>{const d=parseOfferDate(r.date);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
   const cur=new Date().getFullYear();
   if(!years.includes(cur))years.unshift(cur);
   if(dashYear==null||!years.includes(dashYear))dashYear=years.includes(cur)?cur:years[0];
-  const reps=[...new Set(REGISTRY.rows.map(r=>String(r.rep||'').trim()).filter(Boolean))].sort();
+  const reps=[...new Set(offerRows().map(r=>String(r.rep||'').trim()).filter(Boolean))].sort();
   if(dashRep&&!reps.includes(dashRep))dashRep='';
   const rows=dashRows();
   const st=statsOf(rows);
@@ -138,11 +139,11 @@ function renderDashboard(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <label class="fld" style="min-width:110px">${dt('year')}<select id="d_year">${years.map(y=>`<option${y===dashYear?' selected':''}>${y}</option>`).join('')}</select></label>
         <label class="fld" style="min-width:220px">${dt('rep')}<select id="d_rep"><option value="">${dt('all')}</option>${reps.map(r=>`<option${r===dashRep?' selected':''}>${esc(r)}</option>`).join('')}</select></label>
-        ${DEMO.on?`<button class="btn sm" id="d_demoOff" style="background:#FFD017;color:#171717">Esci dalla demo</button>`:`<button class="btn ghost sm" id="d_demo">Dati demo</button>`}
+        ${hasDemoRows()?`<button class="btn sm" id="d_demoToggle" style="background:#FFD017;color:#171717">${demoVisible()?'Nascondi demo':'Mostra demo'}</button><button class="btn ghost sm" id="d_demoDel">Elimina offerte demo</button>`:`<button class="btn ghost sm" id="d_demo">Carica offerte demo</button>`}
         <button class="btn ghost sm" id="d_export">${dt('export')}</button>
         <button class="btn nav sm" id="d_back">${dt('back')}</button>
       </div></div></div>`;
-  const demoBanner=DEMO.on?`<div class="card" style="background:#FFF6D1;border-color:#FFD017"><b>MODALITÀ DEMO</b> · 20 offerte fittizie con prezzi inventati, solo per mostrare la dashboard. Nulla viene salvato (né nel registro, né su GitHub).</div>`:'';
+  const demoBanner=(hasDemoRows()&&demoVisible())?`<div class="card" style="background:#FFF6D1;border-color:#FFD017"><b>OFFERTE DEMO</b> · 20 offerte fittizie con prezzi inventati (numero «DEMO-…»), richiamabili e modificabili. Restano solo in questo browser: non finiscono nel registro Excel né su GitHub. Si eliminano con «Elimina offerte demo».</div>`:'';
   if(!rows.length){
     v.innerHTML=demoBanner+head+`<div class="card"><p class="hint" style="margin:0">${dt('nodata')}</p></div>`;wireDash();return;
   }
@@ -161,7 +162,7 @@ function renderDashboard(){
   // per commerciale (solo quando si guardano tutti)
   let byRep='';
   if(!dashRep){
-    const all=REGISTRY.rows.filter(r=>{const d=parseOfferDate(r.date);return d&&d.getFullYear()===dashYear;});
+    const all=offerRows().filter(r=>{const d=parseOfferDate(r.date);return d&&d.getFullYear()===dashYear;});
     const names=[...new Set(all.map(r=>String(r.rep||'').trim()||'—'))].sort();
     byRep=`<div class="card"><h2>${dt('byRep')}</h2><div style="overflow:auto"><table class="ptable" style="font-size:13px">
       <tr><th>${dt('rep')}</th><th class="r">${dt('count')}</th><th class="r">${dt('value')}</th><th class="r">${dt('wonCount')}</th><th class="r">${dt('wonValue')}</th><th class="r">${dt('rate')}</th><th class="r">${dt('rateV')}</th></tr>
@@ -217,7 +218,6 @@ async function dashPersist(row){
   persistRegistryLocal();
   let ok=false;try{ok=await writeRegistryBack();}catch(_){}
   if(GH.ok&&row&&!row.demo){try{ok=(await ghUpdateOffer(row))||ok;}catch(e){console.error(e);}}
-  if(DEMO.on){flash('Demo: esito aggiornato solo in memoria');return;}
   flash(ok?dt('saved'):dt('savedLocal'));
 }
 function wireDash(){
@@ -225,8 +225,9 @@ function wireDash(){
   $('#d_year').onchange=e=>{dashYear=+e.target.value;renderDashboard();};
   $('#d_rep').onchange=e=>{dashRep=e.target.value;renderDashboard();};
   $('#d_back').onclick=()=>toggleDashboard(false);
-  if($('#d_demo'))$('#d_demo').onclick=()=>{loadDemo();renderDashboard();};
-  if($('#d_demoOff'))$('#d_demoOff').onclick=()=>exitDemo();
+  if($('#d_demo'))$('#d_demo').onclick=()=>{installDemo();renderDashboard();};
+  if($('#d_demoToggle'))$('#d_demoToggle').onclick=()=>{setDemoVisible(!demoVisible());renderDashboard();};
+  if($('#d_demoDel'))$('#d_demoDel').onclick=()=>{if(confirm('Eliminare le 20 offerte demo?')){removeDemo();renderDashboard();}};
   $('#d_export').onclick=()=>{try{downloadRegistry();}catch(e){flash(t('load_err'));}};
   v.querySelectorAll('[data-pickrep]').forEach(tr=>tr.onclick=()=>{dashRep=tr.dataset.pickrep==='—'?'':tr.dataset.pickrep;renderDashboard();});
   v.querySelectorAll('[data-st]').forEach(sel=>sel.onchange=async()=>{
@@ -257,7 +258,6 @@ function wireDash(){
   });
 }
 async function toggleDashboard(on){
-  if(!on&&DEMO.on)exitDemo(true);
   DASH=on;
   if(on&&GH.ok){flash('Aggiorno le offerte da GitHub…');await ghRefresh();}
   const hide=on?'none':'';
@@ -267,46 +267,74 @@ async function toggleDashboard(on){
   render();
 }
 
-/* ---------- modalità DEMO: 20 offerte fittizie per mostrare la dashboard ---------- */
-function loadDemo(){
-  if(DEMO.on)return;
-  DEMO.backup=REGISTRY.rows;DEMO.on=true;
+
+/* ---------- offerte DEMO persistenti (solo in questo browser) ----------
+   20 offerte fittizie con prezzi inventati, complete di snapshot: compaiono in dashboard e nell'elenco «Offerte»
+   e si possono richiamare. Hanno r.demo=true: non vanno nel registro Excel, non vanno su GitHub, non occupano la numerazione. */
+const DEMO_LS_HIDE='depureco_demo_hidden', DEMO_LS_DELETED='depureco_demo_deleted';
+function hasDemoRows(){return REGISTRY.rows.some(r=>r.demo);}
+function hasRealRows(){return REGISTRY.rows.some(r=>!r.demo);}
+// con offerte vere presenti la demo si nasconde da sola, finché non la si mostra a mano
+function demoVisible(){
+  let v=null;try{v=localStorage.getItem(DEMO_LS_HIDE);}catch(_){}
+  if(v==='0')return true; if(v==='1')return false;
+  return !hasRealRows();
+}
+function setDemoVisible(on){try{localStorage.setItem(DEMO_LS_HIDE,on?'0':'1');}catch(_){}}
+function offerRows(){return REGISTRY.rows.filter(r=>!r.demo||demoVisible());}
+function ensureDemoSeed(){
+  let deleted=false;try{deleted=localStorage.getItem(DEMO_LS_DELETED)==='1';}catch(_){}
+  if(!deleted&&!hasDemoRows()&&!hasRealRows()&&DATA.machines&&DATA.machines.length)installDemo();
+}
+function removeDemo(){
+  REGISTRY.rows.filter(r=>r.demo).forEach(r=>{try{localStorage.removeItem(SNAP_LS+r.num);}catch(_){}});
+  REGISTRY.rows=REGISTRY.rows.filter(r=>!r.demo);
+  try{localStorage.setItem(DEMO_LS_DELETED,'1');localStorage.removeItem(DEMO_LS_HIDE);}catch(_){}
+  persistRegistryLocal();
+}
+function installDemo(){
+  try{localStorage.removeItem(DEMO_LS_DELETED);}catch(_){}
+  REGISTRY.rows=REGISTRY.rows.filter(r=>!r.demo);
   let seed=20261013;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296;};
   const pick=a=>a[Math.floor(rnd()*a.length)];
-  const reps=(DATA.reps||[]).map(r=>r.name).filter(Boolean);
+  const reps=(DATA.reps||[]).filter(r=>r.name);
   const clients=['Metalmeccanica Alfa Srl','Officine Beta SpA','Fonderia Gamma Srl','Carpenteria Delta Srl','Plastica Epsilon SpA','Alimentari Zeta Srl','Legnami Eta Srl','Chimica Theta SpA','Stampi Iota Srl','Logistica Kappa Srl','Cartiera Lambda SpA','Ceramiche Mu Srl','Vernici Nu Srl','Saldature Xi Srl','Autoricambi Omicron Srl','Cantieri Pi SpA','Mangimi Rho Srl','Farmaceutica Sigma SpA','Trasformazioni Tau Srl','Impianti Upsilon Srl'];
+  const contacts=['Marco Bianchi','Laura Neri','Paolo Conti','Elena Greco','Davide Riva','Chiara Fontana'];
   const range={'Aspiratori industriali monofase e Wet&Dry':[1400,3600],'Aspiratori industriali trifase':[3800,9800],'Aspiratori trifase ad alta potenza':[18000,36000],
     'Aspiratori per polveri tossiche e pericolose':[4500,9000],'Aspiratori per olio e truciolo':[3200,8500],'Aspiratori ad aria compressa':[900,2600],
     'Aspiratori per fumi di saldatura':[1800,4200],'Aspiratori per sfridi, confezionamento e OEM':[1500,4800],'Depolveratori industriali':[3500,12000],
     'Impianti di aspirazione centralizzati':[9000,28000],'Pre-separatori e separatori filtranti':[1200,5200]};
   const machines=DATA.machines.filter(m=>range[m.category]);
-  const rows=[];
+  const tpl=JSON.parse(JSON.stringify(S));
   for(let i=0;i<20;i++){
-    const month=Math.min(9,Math.floor(i*10/20)+(rnd()<0.3?1:0));   // gen–ott, ordinati
-    const day=1+Math.floor(rnd()*27);
-    const date=new Date(2026,month,day).toLocaleDateString('it-IT');
+    const month=Math.min(9,Math.floor(i*10/20)+(rnd()<0.3?1:0));
+    const maxDay=month===new Date().getMonth()&&new Date().getFullYear()===2026?Math.max(1,new Date().getDate()-1):27;   // mai date future
+    const dateStr=new Date(2026,month,1+Math.floor(rnd()*maxDay)).toLocaleDateString('it-IT');
+    const rep=pick(reps);
+    const num='DEMO-26-'+String(i+1).padStart(3,'0');
+    const disc2=pick([0,0,5,5,10]);
     const n=1+(rnd()<0.35?1:0);
-    const lines=[];let pkgNet=0;
+    const sols=[],lines=[];
     for(let k=0;k<n;k++){
       const m=pick(machines),[a,b]=range[m.category];
       const qty=1+(rnd()<0.25?Math.floor(rnd()*3):0);
       const unit=Math.round((a+rnd()*(b-a))/10)*10;
-      const net=Math.round(unit*qty*(1-(0.35+rnd()*0.15))*100)/100;   // sconto 35–50%
-      lines.push({code:m.code,name:m.name,category:m.category,qty,value:net,pkg:k+1,won:false});
+      const specs={};SPEC_FIELDS.forEach(([f])=>{if(m[f])specs[f]=m[f];});
+      sols.push({code:m.code,name:m.name,desc:m.desc||'',atex:!!m.atex,unit,qty,img:'',imgs:[],specs,accessories:[],disc:null,tableDesc:undefined});
+      lines.push({code:m.code,name:m.name,category:m.category,qty,value:Math.round(unit*qty*0.6*(1-disc2/100)*100)/100,pkg:k+1,won:false});
     }
-    pkgNet=lines[0].value;
-    const old=month<=7;const x=rnd();
+    const old=month<=7,x=rnd();
     const status=old?(x<0.42?'won':x<0.75?'lost':'open'):(x<0.2?'won':x<0.3?'lost':'open');
-    if(status==='won'){lines[0].won=true;}
-    rows.push({prog:i+1,num:'DEMO-26-'+String(i+1).padStart(3,'0'),date,client:clients[i],rep:pick(reps),total:pkgNet,
-      machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'',
-      status,outcomeDate:status==='open'?'':date,wonValue:'',lines,demo:true});
+    if(status==='won')lines[0].won=true;
+    const client=clients[i],contact=pick(contacts);
+    const state=Object.assign({},tpl,{rep:{name:rep.name,email:rep.email||'',phone:rep.phone||''},offerNum:num,date:dateStr,client,contact,role:'Responsabile acquisti',
+      phone:'',email:'demo@esempio.invalid',subject:'Offerta aspiratore industriale',intro:'',isRevisionOffer:false,solutions:sols,
+      discount:40,discount2:disc2,discount3:0,notes:''});
+    const row={prog:i+1,num,date:dateStr,client,rep:rep.name,total:lines[0].value,
+      machine:lines.map(l=>`${l.code} (${l.name})${l.qty>1?' x'+l.qty:''}`).join(' | '),addedOptionals:'',note:'DEMO',
+      status,outcomeDate:status==='open'?'':dateStr,wonValue:'',lines,demo:true};
+    REGISTRY.rows.push(row);
+    rememberSnapshotLocal(num,{__depurecoOffer:true,baseOfferNum:num,savedAt:new Date(2026,month,1).toISOString(),state});
   }
-  REGISTRY.rows=rows;
-  dashYear=2026;dashRep='';
-}
-function exitDemo(silent){
-  if(!DEMO.on)return;
-  REGISTRY.rows=DEMO.backup||[];DEMO.on=false;DEMO.backup=null;
-  if(!silent)renderDashboard();
+  persistRegistryLocal();
 }
