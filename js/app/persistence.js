@@ -198,13 +198,13 @@ async function writeRegistryEntry(){
     machine:machineSummary,addedOptionals:addedOptSummary,note:'',status:'open',outcomeDate:'',wonValue:'',lines:offerLinesFromState()};
   REGISTRY.rows.push(row);S.offerNum=num;persistRegistryLocal();
   let ghSaved=false;
+  const snapshot={__depurecoOffer:true,baseOfferNum:String(num).replace(/_REV\d+$/i,''),savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};
   if(GH.ok){
     try{
-      const base=String(num).replace(/_REV\d+$/i,'');
-      const snapshot={__depurecoOffer:true,baseOfferNum:base,savedAt:new Date().toISOString(),state:JSON.parse(JSON.stringify(S))};
       const r=await ghSaveOffer(row,snapshot);ghSaved=!!r.saved;num=row.num;prog=row.prog;S.offerNum=num;persistRegistryLocal();
     }catch(e){console.error(e);flash('GitHub: offerta NON salvata ('+e.message+')');}
   }
+  rememberSnapshotLocal(num,snapshot);                 // copia locale: l'offerta si può richiamare anche senza GitHub
   let saved=await writeRegistryBack();
   if(!saved&&ghSaved)saved=true;                       // salvata su GitHub anche senza cartella collegata
   if(!saved) saved=await ensureRegistryHandleAndWrite();

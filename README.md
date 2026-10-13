@@ -34,7 +34,7 @@ netlify.toml               publish = "dist", nessun build
 css/                       brand.css (design token Depureco) · app.css
 js/config/brand.js         anagrafica, logo, footer del documento
 js/data/                   i18n.js · general-terms.js ⚠ segnaposto · catalogo.js (generato) · defaults.js
-js/app/                    core · passi · quote · router · persistence · folder-pdf · xlsx-loader · dashboard · github
+js/app/                    core · passi · quote · router · persistence · folder-pdf · xlsx-loader · dashboard · github · recall
 images/                    328 immagini prodotto <Codice>.png (generate dallo scraper)
 excel/                     📥 file da compilare / caricare nel configuratore
   01_Matrice_Prezzi_Depureco.xlsx     prezzi macchine (solo colonna Prezzo) + accessori + commerciali
@@ -64,6 +64,9 @@ Il pulsante **GitHub** (in alto) salva ogni offerta in una repo **privata**: `of
 3. Nel configuratore: **GitHub** → proprietario, repo, branch, cartella, token → *Collega e verifica*.
 
 **Sicurezza:** il token resta nel `localStorage` del browser, mai nel codice né nella repo. L'app **rifiuta di scrivere se la repo è pubblica**. Ogni commerciale usa il proprio token (revocabile). Funziona anche senza «Collega cartella».
+
+## Richiamare un'offerta
+Pulsante **📚 Offerte** in alto (e «Richiama un'offerta» nel primo passo): elenco di tutte le offerte fatte, con ricerca per numero/cliente/macchina e filtri per commerciale ed esito. Un clic sulla riga e l'offerta si riapre da sola, come nuova revisione (`DPC-26-001_REV1`). Gli snapshot sono letti da GitHub (`offerte/<anno>/<NUMERO>.json`) o dalla copia locale del browser.
 
 ## Dashboard commerciale
 Pulsante **📊 Dashboard** in alto. Per commerciale e per anno: offerte mese per mese e totale anno (numero e valore), esito segnato dal commerciale (Aperta / Vinta / Persa, con le macchine effettivamente vendute e il valore vinto), analisi vinte vs offerte per numero e per valore, statistiche delle macchine offerte e vendute (per modello e per categoria) ed elenco offerte.

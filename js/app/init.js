@@ -3,6 +3,7 @@
 $('#brandLogo').innerHTML=logoDark(30);
 setupLoader();
 $('#dashBtn').onclick=()=>toggleDashboard(!DASH);
+$('#offersBtn').onclick=openOfferList;
 loadRegistryLocal();
 ghInit();
 if(!S.delivery)S.delivery=t('def_delivery');

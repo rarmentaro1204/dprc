@@ -18,6 +18,7 @@ function stepCustomer(){
   v.innerHTML=`
   <div class="card">
     <h2>${t('step_customer')}</h2><p class="hint">${t('hint_customer')}</p>
+    <button class="btn prim" id="btnOffers" style="margin-bottom:12px;margin-right:8px">📚 ${LANG==='it'?'Richiama un\'offerta':'Recall an offer'}</button>
     ${window.showDirectoryPicker?`<button class="btn ghost" id="btnRecall" style="margin-bottom:12px">🔄 ${t('recall_offer')}</button>`:''}
     <button class="btn ghost" id="btnRecallUpload" style="margin-bottom:12px">📤 ${t('recall_upload')}</button>
     <div class="grid g3">
@@ -44,6 +45,7 @@ function stepCustomer(){
       <textarea id="i_intro" placeholder="${esc(t('intro_default'))}">${esc(S.intro)}</textarea></label>
   </div>`;
   $('#i_rep').onchange=e=>{const r=DATA.reps.find(x=>x.email===e.target.value);if(r){S.rep=r;$('#i_repmail').value=r.email;$('#i_repphone').value=r.phone;}};
+  if($('#btnOffers'))$('#btnOffers').onclick=openOfferList;
   if($('#btnRecall'))$('#btnRecall').onclick=recallOffer;
   if($('#btnRecallUpload'))$('#btnRecallUpload').onclick=openRecallUploadModal;
   const bind=(id,key)=>{$('#'+id).oninput=e=>S[key]=e.target.value;};
